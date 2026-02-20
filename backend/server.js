@@ -7,8 +7,12 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Configuration CORS plus permissive pour Render
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://cookizzy.vercel.app'], // Autorise ton frontend
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
