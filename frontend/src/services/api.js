@@ -1,16 +1,25 @@
 import axios from 'axios';
 
+// URL du backend en ligne (FORCÉE)
+const API_URL = 'https://cookizzy-backend.onrender.com/api';
+
+console.log('🚀 API URL forcée:', API_URL);
+
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Intercepteur pour ajouter le token à chaque requête
+// Intercepteur pour ajouter le token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('📡 Requête vers:', config.baseURL + config.url);
     return config;
   },
   (error) => {
@@ -26,6 +35,7 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
+    console.error('❌ Erreur API:', error.message);
     return Promise.reject(error);
   }
 );
