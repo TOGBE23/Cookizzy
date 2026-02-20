@@ -1,11 +1,45 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-const initialState = {
-  selectedRecipes: [], // IDs des recettes sélectionnées
-  shoppingList: [], // Liste de courses générée
-  checkedItems: {}, // État des cases à cocher
-  recipesData: [] // Données complètes des recettes sélectionnées
+// Fonction pour charger l'état depuis localStorage
+const loadState = () => {
+  try {
+    const serializedState = localStorage.getItem('shoppingList');
+    if (serializedState === null) {
+      return {
+        selectedRecipes: [],
+        shoppingList: [],
+        checkedItems: {},
+        recipesData: []
+      };
+    }
+    return JSON.parse(serializedState);
+  } catch (err) {
+    console.error('Erreur chargement localStorage:', err);
+    return {
+      selectedRecipes: [],
+      shoppingList: [],
+      checkedItems: {},
+      recipesData: []
+    };
+  }
 };
+
+// Fonction pour sauvegarder l'état dans localStorage
+const saveState = (state) => {
+  try {
+    const stateToSave = {
+      selectedRecipes: state.selectedRecipes,
+      shoppingList: state.shoppingList,
+      checkedItems: state.checkedItems,
+      recipesData: state.recipesData
+    };
+    localStorage.setItem('shoppingList', JSON.stringify(stateToSave));
+  } catch (err) {
+    console.error('Erreur sauvegarde localStorage:', err);
+  }
+};
+
+const initialState = loadState();
 
 const shoppingSlice = createSlice({
   name: 'shopping',
@@ -15,6 +49,7 @@ const shoppingSlice = createSlice({
     addRecipeToSelection: (state, action) => {
       if (!state.selectedRecipes.includes(action.payload)) {
         state.selectedRecipes.push(action.payload);
+        saveState(state);
       }
     },
     
@@ -22,12 +57,14 @@ const shoppingSlice = createSlice({
     removeRecipeFromSelection: (state, action) => {
       state.selectedRecipes = state.selectedRecipes.filter(id => id !== action.payload);
       state.recipesData = state.recipesData.filter(recipe => recipe.id !== action.payload);
+      saveState(state);
     },
     
     // Ajouter les données complètes d'une recette
     addRecipeData: (state, action) => {
       if (!state.recipesData.find(r => r.id === action.payload.id)) {
         state.recipesData.push(action.payload);
+        saveState(state);
       }
     },
     
@@ -43,7 +80,6 @@ const shoppingSlice = createSlice({
               
               if (ingredientsMap.has(key)) {
                 const existing = ingredientsMap.get(key);
-                // Additionner les quantités si c'est des nombres
                 const qty1 = parseFloat(existing.quantity) || 0;
                 const qty2 = parseFloat(ing.quantity) || 0;
                 existing.quantity = (qty1 + qty2).toString();
@@ -52,7 +88,7 @@ const shoppingSlice = createSlice({
                   name: ing.name, 
                   quantity: ing.quantity || '', 
                   unit: ing.unit || '',
-                  recipe: recipe.title // Pour savoir d'où ça vient
+                  recipe: recipe.title
                 });
               }
             }
@@ -61,12 +97,14 @@ const shoppingSlice = createSlice({
       });
       
       state.shoppingList = Array.from(ingredientsMap.values());
+      saveState(state);
     },
     
     // Cocher/décocher un ingrédient
     toggleCheckedItem: (state, action) => {
       const index = action.payload;
       state.checkedItems[index] = !state.checkedItems[index];
+      saveState(state);
     },
     
     // Tout cocher/décocher
@@ -75,6 +113,7 @@ const shoppingSlice = createSlice({
       state.shoppingList.forEach((_, index) => {
         state.checkedItems[index] = checked;
       });
+      saveState(state);
     },
     
     // Réinitialiser la liste
@@ -83,6 +122,7 @@ const shoppingSlice = createSlice({
       state.shoppingList = [];
       state.checkedItems = {};
       state.recipesData = [];
+      localStorage.removeItem('shoppingList');
     }
   }
 });

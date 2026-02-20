@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { fetchUserProfile, updateProfile, deleteAccount, clearSuccess, clearError } from '../store/slices/profileSlice';
 import { logout } from '../store/slices/authSlice';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Profile = () => {
   const dispatch = useDispatch();
@@ -24,6 +27,7 @@ const Profile = () => {
   const [removeImage, setRemoveImage] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -48,6 +52,10 @@ const Profile = () => {
 
   useEffect(() => {
     if (success) {
+      toast.success('Profil mis à jour avec succès !', {
+        position: 'bottom-center',
+        id: 'profile-success'
+      });
       setTimeout(() => {
         dispatch(clearSuccess());
       }, 3000);
@@ -66,7 +74,9 @@ const Profile = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image trop volumineuse (max 5MB)');
+        toast.error('Image trop volumineuse (max 5MB)', {
+          id: 'image-error'
+        });
         return;
       }
       setImage(file);
@@ -122,25 +132,36 @@ const Profile = () => {
   };
 
   const handleDeleteAccount = () => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) {
-      dispatch(deleteAccount()).then(() => {
-        dispatch(logout());
-        navigate('/register');
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteAccount = () => {
+    dispatch(deleteAccount()).then(() => {
+      dispatch(logout());
+      toast.success('Compte supprimé', {
+        position: 'bottom-center'
       });
-    }
+      navigate('/register');
+    });
   };
 
   if (!user) {
-    return <div className="text-center py-12">Veuillez vous connecter</div>;
+    return (
+      <div className="min-h-screen bg-neutral-100 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-neutral-600 dark:text-gray-300">Veuillez vous connecter</p>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#f5f0e8'}}>
-      {/* PLUS DE NAVBAR ICI - ELLE EST DANS App.js */}
-      
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-3xl font-bold mb-6" style={{color: '#8b5a2b'}}>Mon Profil</h1>
+    <div className="min-h-screen bg-neutral-100 dark:bg-gray-900 transition-colors duration-300">
+      <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6"
+        >
+          <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-neutral-700 dark:text-white">Mon Profil</h1>
 
           <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
             {/* Photo de profil */}
@@ -150,19 +171,18 @@ const Profile = () => {
                   <img 
                     src={imagePreview} 
                     alt="Photo de profil" 
-                    className="w-32 h-32 rounded-full object-cover border-4"
+                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4"
                     style={{borderColor: '#ffb6c1'}}
                   />
                 ) : (
-                  <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-4xl">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-4xl text-gray-500 dark:text-gray-400">
                     👤
                   </div>
                 )}
               </div>
 
-              <div className="flex gap-3 mt-4">
-                <label className="px-4 py-2 rounded-md text-white cursor-pointer hover:opacity-80 transition"
-                  style={{backgroundColor: '#c4a484'}}>
+              <div className="flex flex-wrap gap-3 mt-4 justify-center">
+                <label className="px-4 py-2 bg-primary-main dark:bg-primary-dark text-white rounded-lg hover:opacity-90 transition cursor-pointer">
                   Changer photo
                   <input
                     type="file"
@@ -176,8 +196,7 @@ const Profile = () => {
                   <button
                     type="button"
                     onClick={handleRemoveImage}
-                    className="px-4 py-2 rounded-md text-white hover:opacity-80 transition"
-                    style={{backgroundColor: '#ffb6c1'}}
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:opacity-90 transition"
                   >
                     Supprimer
                   </button>
@@ -188,7 +207,7 @@ const Profile = () => {
             {/* Informations de base */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
                   Nom d'utilisateur
                 </label>
                 <input
@@ -196,14 +215,13 @@ const Profile = () => {
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                  style={{focusRingColor: '#ffb6c1'}}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-100 dark:focus:ring-primary-800 transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
                   Email
                 </label>
                 <input
@@ -211,14 +229,13 @@ const Profile = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                  style={{focusRingColor: '#ffb6c1'}}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-100 dark:focus:ring-primary-800 transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
                   Bio
                 </label>
                 <textarea
@@ -226,27 +243,31 @@ const Profile = () => {
                   value={formData.bio}
                   onChange={handleChange}
                   rows="3"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                  style={{focusRingColor: '#ffb6c1'}}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-100 dark:focus:ring-primary-800 transition-all"
                   placeholder="Parlez-nous de vous, de vos passions culinaires..."
                 />
               </div>
             </div>
 
             {/* Changer mot de passe */}
-            <div className="border-t pt-6">
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
               <button
                 type="button"
                 onClick={() => setShowPasswordForm(!showPasswordForm)}
-                className="text-indigo-600 hover:text-indigo-800 font-medium"
+                className="text-primary-dark dark:text-primary-light hover:underline font-medium"
               >
                 {showPasswordForm ? 'Masquer' : 'Changer le mot de passe'}
               </button>
 
               {showPasswordForm && (
-                <div className="mt-4 space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 space-y-4"
+                >
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
                       Mot de passe actuel
                     </label>
                     <input
@@ -254,12 +275,12 @@ const Profile = () => {
                       name="currentPassword"
                       value={formData.currentPassword}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
                       Nouveau mot de passe
                     </label>
                     <input
@@ -267,12 +288,12 @@ const Profile = () => {
                       name="newPassword"
                       value={formData.newPassword}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
                       Confirmer le nouveau mot de passe
                     </label>
                     <input
@@ -280,37 +301,34 @@ const Profile = () => {
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white"
                     />
                   </div>
 
                   {passwordError && (
-                    <p className="text-red-500 text-sm">{passwordError}</p>
+                    <p className="text-red-600 dark:text-red-400 text-sm">{passwordError}</p>
                   )}
-                </div>
+                </motion.div>
               )}
             </div>
 
             {/* Messages */}
             {error && (
-              <div className="bg-red-50 text-red-500 p-3 rounded-md">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg"
+              >
                 {error}
-              </div>
-            )}
-
-            {success && (
-              <div className="bg-green-50 text-green-600 p-3 rounded-md">
-                ✅ Profil mis à jour avec succès !
-              </div>
+              </motion.div>
             )}
 
             {/* Boutons d'action */}
-            <div className="flex gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 text-white py-2 px-4 rounded-md hover:opacity-80 transition disabled:opacity-50"
-                style={{backgroundColor: '#c4a484'}}
+                className="flex-1 bg-blue-500 dark:bg-primary-dark text-white py-3 px-4 rounded-lg hover:opacity-90 transition disabled:opacity-50"
               >
                 {isLoading ? 'Mise à jour...' : 'Mettre à jour'}
               </button>
@@ -318,8 +336,7 @@ const Profile = () => {
               <button
                 type="button"
                 onClick={handleDeleteAccount}
-                className="px-4 py-2 rounded-md text-white hover:opacity-80 transition"
-                style={{backgroundColor: '#ffb6c1'}}
+                className="px-4 py-3 bg-red-500 text-white rounded-lg hover:opacity-90 transition"
               >
                 Supprimer le compte
               </button>
@@ -327,25 +344,41 @@ const Profile = () => {
           </form>
 
           {/* Statistiques */}
-          <div className="mt-8 pt-6 border-t">
-            <h2 className="text-lg font-semibold mb-4" style={{color: '#8b5a2b'}}>Statistiques</h2>
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-semibold mb-4 text-neutral-700 dark:text-white">Statistiques</h2>
             <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="p-3 rounded-lg" style={{backgroundColor: '#ffd8b0'}}>
-                <p className="text-2xl font-bold" style={{color: '#8b5a2b'}}>0</p>
-                <p className="text-sm text-gray-600">Recettes</p>
+              <div className="p-3 rounded-lg bg-secondary-100 dark:bg-gray-700">
+                <p className="text-2xl font-bold text-neutral-700 dark:text-white">0</p>
+                <p className="text-xs text-neutral-600 dark:text-gray-300">Recettes</p>
               </div>
-              <div className="p-3 rounded-lg" style={{backgroundColor: '#fff9e6'}}>
-                <p className="text-2xl font-bold" style={{color: '#8b5a2b'}}>0</p>
-                <p className="text-sm text-gray-600">Favoris</p>
+              <div className="p-3 rounded-lg bg-secondary-100 dark:bg-gray-700">
+                <p className="text-2xl font-bold text-neutral-700 dark:text-white">0</p>
+                <p className="text-xs text-neutral-600 dark:text-gray-300">Favoris</p>
               </div>
-              <div className="p-3 rounded-lg" style={{backgroundColor: '#d8f0d8'}}>
-                <p className="text-2xl font-bold" style={{color: '#8b5a2b'}}>0</p>
-                <p className="text-sm text-gray-600">Commentaires</p>
+              <div className="p-3 rounded-lg bg-secondary-100 dark:bg-gray-700">
+                <p className="text-2xl font-bold text-neutral-700 dark:text-white">0</p>
+                <p className="text-xs text-neutral-600 dark:text-gray-300">Commentaires</p>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
+
+      {/* Modal de confirmation suppression compte */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDeleteAccount}
+        title="⚠️ Supprimer le compte"
+        message={
+          <div className="text-neutral-700 dark:text-gray-200">
+            <p className="mb-2">Êtes-vous sûr de vouloir supprimer votre compte ?</p>
+            <p className="text-sm text-red-600 dark:text-red-400">Cette action est irréversible ! Toutes vos données seront perdues.</p>
+          </div>
+        }
+        confirmText="Oui, supprimer"
+        cancelText="Annuler"
+      />
     </div>
   );
 };

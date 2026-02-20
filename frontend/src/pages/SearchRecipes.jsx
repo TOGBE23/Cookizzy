@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { fetchRecipes, deleteRecipe } from '../store/slices/recipeSlice';
 import { fetchRating } from '../store/slices/socialSlice';
 import { addRecipeToSelection } from '../store/slices/shoppingSlice';
@@ -33,15 +35,11 @@ const SearchRecipes = () => {
   const [recipeToDelete, setRecipeToDelete] = useState(null);
   const [showAddToListConfirm, setShowAddToListConfirm] = useState(false);
   const [recipeToAdd, setRecipeToAdd] = useState(null);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
-  // Charger toutes les recettes et leurs notes
   useEffect(() => {
     dispatch(fetchRecipes());
   }, [dispatch]);
 
-  // Charger les notes pour chaque recette
   useEffect(() => {
     if (recipes.length > 0) {
       recipes.forEach(recipe => {
@@ -52,18 +50,7 @@ const SearchRecipes = () => {
     }
   }, [recipes, dispatch, ratings]);
 
-  // Fonction pour afficher un message de succès temporaire
-  const showTemporaryMessage = (message) => {
-    setSuccessMessage(message);
-    setShowSuccessMessage(true);
-    setTimeout(() => {
-      setShowSuccessMessage(false);
-    }, 3000);
-  };
-
-  // Éliminer les doublons et filtrer
   useEffect(() => {
-    // Étape 1: Éliminer les doublons par ID
     const unique = [];
     const seen = new Set();
     
@@ -76,10 +63,8 @@ const SearchRecipes = () => {
     
     setUniqueRecipes(unique);
     
-    // Étape 2: Appliquer les filtres
     let filtered = [...unique];
 
-    // Filtre par terme de recherche
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(recipe => 
@@ -89,7 +74,6 @@ const SearchRecipes = () => {
       );
     }
 
-    // Filtre par ingrédient
     if (selectedIngredient) {
       const ingredient = selectedIngredient.toLowerCase();
       filtered = filtered.filter(recipe => 
@@ -99,19 +83,16 @@ const SearchRecipes = () => {
       );
     }
 
-    // Filtre par catégorie
     if (selectedCategory) {
       filtered = filtered.filter(recipe => 
         recipe.category && recipe.category.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
 
-    // Filtre par difficulté
     if (selectedDifficulty) {
       filtered = filtered.filter(recipe => recipe.difficulty === selectedDifficulty);
     }
 
-    // Filtre par temps maximum
     if (maxPrepTime) {
       filtered = filtered.filter(recipe => 
         recipe.prepTime && recipe.prepTime <= parseInt(maxPrepTime)
@@ -121,7 +102,13 @@ const SearchRecipes = () => {
     setFilteredRecipes(filtered);
   }, [searchTerm, selectedCategory, selectedDifficulty, maxPrepTime, selectedIngredient, recipes]);
 
-  // Handlers pour les actions
+  const categories = [...new Set(uniqueRecipes.map(r => r.category).filter(Boolean))];
+  const difficulties = ['Facile', 'Moyen', 'Difficile'];
+  
+  const allIngredients = [...new Set(
+    uniqueRecipes.flatMap(r => r.ingredients?.map(i => i.name) || [])
+  )].filter(Boolean).sort();
+
   const handleViewClick = (recipe) => {
     setSelectedRecipe(recipe);
     setIsViewModalOpen(true);
@@ -140,7 +127,11 @@ const SearchRecipes = () => {
   const handleConfirmDelete = () => {
     if (recipeToDelete) {
       dispatch(deleteRecipe(recipeToDelete.id));
-      showTemporaryMessage(`"${recipeToDelete.title}" a été supprimé`);
+      toast.success(`"${recipeToDelete.title}" a été supprimé`, {
+        position: 'bottom-center',
+        duration: 2000,
+        id: 'delete-success'
+      });
       setRecipeToDelete(null);
     }
   };
@@ -153,19 +144,14 @@ const SearchRecipes = () => {
   const handleConfirmAddToList = () => {
     if (recipeToAdd) {
       dispatch(addRecipeToSelection(recipeToAdd.id));
-      showTemporaryMessage(`"${recipeToAdd.title}" ajouté à la liste de courses`);
+      toast.success(`"${recipeToAdd.title}" ajouté à la liste`, {
+        position: 'bottom-center',
+        duration: 2000,
+        id: 'add-to-list-success'
+      });
       setRecipeToAdd(null);
     }
   };
-
-  // Extraire les catégories uniques
-  const categories = [...new Set(uniqueRecipes.map(r => r.category).filter(Boolean))];
-  const difficulties = ['Facile', 'Moyen', 'Difficile'];
-  
-  // Extraire tous les ingrédients uniques pour l'autocomplete
-  const allIngredients = [...new Set(
-    uniqueRecipes.flatMap(r => r.ingredients?.map(i => i.name) || [])
-  )].filter(Boolean).sort();
 
   const getRatingDisplay = (recipeId) => {
     const rating = ratings[recipeId];
@@ -173,7 +159,7 @@ const SearchRecipes = () => {
     return (
       <div className="flex items-center mt-1">
         <span className="text-yellow-500 mr-1">★</span>
-        <span className="text-sm font-medium" style={{color: '#8b5a2b'}}>
+        <span className="text-xs text-neutral-600 dark:text-gray-300">
           {rating.average} ({rating.total} avis)
         </span>
       </div>
@@ -181,157 +167,164 @@ const SearchRecipes = () => {
   };
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#f5f0e8'}}>
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Message de succès flottant */}
-        {showSuccessMessage && (
-          <div className="fixed top-20 right-4 z-50 animate-slideIn">
-            <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
-              <span>✅</span>
-              <span>{successMessage}</span>
-            </div>
-          </div>
-        )}
-
-        <h1 className="text-3xl font-bold mb-8" style={{color: '#8b5a2b'}}>
+    <div className="min-h-screen bg-neutral-100 dark:bg-gray-900 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-2xl sm:text-3xl font-bold mb-6 text-neutral-700 dark:text-white"
+        >
           🔍 Rechercher des recettes
-        </h1>
+        </motion.h1>
 
-        {/* Barre de recherche principale */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex gap-4">
+        {/* Barre de recherche */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-4 mb-6"
+        >
+          <div className="flex flex-col sm:flex-row gap-4">
             <input
               type="text"
               placeholder="Rechercher par titre, description ou tags..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50"
-              style={{focusRingColor: '#ffb6c1'}}
+              className="flex-1 px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-100 dark:focus:ring-primary-800 transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="px-6 py-3 rounded-md text-white hover:opacity-80 transition"
-              style={{backgroundColor: '#c4a484'}}
+              className="px-6 py-3 bg-primary-main dark:bg-primary-dark text-white rounded-lg hover:opacity-90 transition"
             >
               {showFilters ? 'Masquer filtres' : 'Filtres avancés'}
             </button>
           </div>
 
           {/* Filtres avancés */}
-          {showFilters && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Filtre par ingrédient */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{color: '#8b5a2b'}}>
-                    Ingrédient
-                  </label>
-                  <input
-                    type="text"
-                    list="ingredients"
-                    placeholder="Ex: poulet, tomate..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    value={selectedIngredient}
-                    onChange={(e) => setSelectedIngredient(e.target.value)}
-                  />
-                  <datalist id="ingredients">
-                    {allIngredients.map(ing => (
-                      <option key={ing} value={ing} />
-                    ))}
-                  </datalist>
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
+                      Ingrédient
+                    </label>
+                    <input
+                      type="text"
+                      list="ingredients"
+                      placeholder="Ex: poulet, tomate..."
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white"
+                      value={selectedIngredient}
+                      onChange={(e) => setSelectedIngredient(e.target.value)}
+                    />
+                    <datalist id="ingredients">
+                      {allIngredients.map(ing => (
+                        <option key={ing} value={ing} />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
+                      Catégorie
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white"
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                    >
+                      <option value="">Toutes les catégories</option>
+                      {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
+                      Difficulté
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white"
+                      value={selectedDifficulty}
+                      onChange={(e) => setSelectedDifficulty(e.target.value)}
+                    >
+                      <option value="">Toutes les difficultés</option>
+                      {difficulties.map(diff => (
+                        <option key={diff} value={diff}>{diff}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-gray-300">
+                      Temps max (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ex: 30"
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-neutral-700 dark:text-white"
+                      value={maxPrepTime}
+                      onChange={(e) => setMaxPrepTime(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                {/* Filtre par catégorie */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{color: '#8b5a2b'}}>
-                    Catégorie
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedCategory('');
+                      setSelectedDifficulty('');
+                      setMaxPrepTime('');
+                      setSelectedIngredient('');
+                    }}
+                    className="px-4 py-2 bg-secondary-100 dark:bg-gray-700 text-neutral-700 dark:text-white rounded-lg hover:opacity-90 transition"
                   >
-                    <option value="">Toutes les catégories</option>
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                    Réinitialiser les filtres
+                  </button>
                 </div>
-
-                {/* Filtre par difficulté */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{color: '#8b5a2b'}}>
-                    Difficulté
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    value={selectedDifficulty}
-                    onChange={(e) => setSelectedDifficulty(e.target.value)}
-                  >
-                    <option value="">Toutes les difficultés</option>
-                    {difficulties.map(diff => (
-                      <option key={diff} value={diff}>{diff}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Filtre par temps */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{color: '#8b5a2b'}}>
-                    Temps max (minutes)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Ex: 30"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    value={maxPrepTime}
-                    onChange={(e) => setMaxPrepTime(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Bouton de réinitialisation */}
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedCategory('');
-                    setSelectedDifficulty('');
-                    setMaxPrepTime('');
-                    setSelectedIngredient('');
-                  }}
-                  className="text-sm px-4 py-2 rounded-md hover:opacity-80 transition"
-                  style={{color: '#8b5a2b', backgroundColor: '#ffd8b0'}}
-                >
-                  Réinitialiser les filtres
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         {/* Résultats */}
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{borderColor: '#c4a484'}}></div>
-            <p className="mt-4" style={{color: '#8b5a2b'}}>Chargement des recettes...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-100 dark:border-primary-800 border-t-transparent mx-auto"></div>
+            <p className="mt-4 text-neutral-600 dark:text-gray-300">Chargement des recettes...</p>
           </div>
         ) : (
           <>
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-lg" style={{color: '#8b5a2b'}}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="flex justify-between items-center mb-4"
+            >
+              <p className="text-neutral-600 dark:text-gray-300">
                 {filteredRecipes.length} recette{filteredRecipes.length > 1 ? 's' : ''} trouvée{filteredRecipes.length > 1 ? 's' : ''}
               </p>
               {uniqueRecipes.length !== recipes.length && (
-                <p className="text-sm text-orange-600">
+                <p className="text-sm text-orange-600 dark:text-orange-400">
                   ℹ️ {recipes.length - uniqueRecipes.length} doublon(s) éliminé(s)
                 </p>
               )}
-            </div>
+            </motion.div>
 
             {filteredRecipes.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-12 text-center">
-                <p className="text-gray-500 text-lg mb-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-12 text-center"
+              >
+                <p className="text-gray-600 dark:text-gray-300 text-lg mb-4">
                   Aucune recette ne correspond à vos critères
                 </p>
                 <button
@@ -342,148 +335,143 @@ const SearchRecipes = () => {
                     setMaxPrepTime('');
                     setSelectedIngredient('');
                   }}
-                  className="px-6 py-3 rounded-md text-white hover:opacity-80 transition"
-                  style={{backgroundColor: '#c4a484'}}
+                  className="px-6 py-3 bg-primary-main dark:bg-primary-dark text-white rounded-lg hover:opacity-90 transition"
                 >
                   Effacer tous les filtres
                 </button>
-              </div>
+              </motion.div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRecipes.map((recipe) => {
-                  const isOwner = user && parseInt(user.id) === parseInt(recipe.authorId);
-                  
-                  return (
-                    <div 
-                      key={recipe.id} 
-                      className="bg-white rounded-lg shadow overflow-hidden hover:shadow-xl transition-all transform hover:-translate-y-1"
-                    >
-                      {/* Image cliquable */}
-                      <div 
-                        className="cursor-pointer overflow-hidden h-48"
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
+              >
+                <AnimatePresence>
+                  {filteredRecipes.map((recipe) => {
+                    const isOwner = user && parseInt(user.id) === parseInt(recipe.authorId);
+                    
+                    return (
+                      <motion.div
+                        key={recipe.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        whileHover={{ y: -4 }}
+                        className="bg-white dark:bg-gray-800 rounded-xl shadow-soft hover:shadow-medium overflow-hidden cursor-pointer transition-all"
                         onClick={() => handleViewClick(recipe)}
                       >
-                        {recipe.imageUrl ? (
-                          <img 
-                            src={`http://localhost:5000${recipe.imageUrl}`} 
-                            alt={recipe.title}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center">
-                            <span className="text-4xl">🍳</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="p-4">
-                        {/* Titre */}
-                        <h3 
-                          className="text-lg font-semibold cursor-pointer hover:text-indigo-600 transition mb-2"
-                          onClick={() => handleViewClick(recipe)}
-                          style={{color: '#8b5a2b'}}
-                        >
-                          {recipe.title}
-                        </h3>
-
-                        {/* Métadonnées */}
-                        <div className="flex items-center text-sm text-gray-500 mb-2">
-                          <span className="mr-3">⏱️ {recipe.prepTime || '?'} min</span>
-                          <span className="mr-3">📊 {recipe.difficulty}</span>
-                          <span>🍽️ {recipe.category || 'Non catégorisé'}</span>
-                        </div>
-
-                        {/* Note moyenne */}
-                        {getRatingDisplay(recipe.id)}
-
-                        {/* Description courte */}
-                        {recipe.description && (
-                          <p className="text-gray-600 text-sm mt-2 line-clamp-2">
-                            {recipe.description}
-                          </p>
-                        )}
-
-                        {/* Tags */}
-                        {recipe.tags && recipe.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-3">
-                            {recipe.tags.slice(0, 3).map(tag => (
-                              <span 
-                                key={tag} 
-                                className="px-2 py-1 text-xs rounded-full"
-                                style={{backgroundColor: '#ffd8b0', color: '#8b5a2b'}}
-                              >
-                                #{tag}
-                              </span>
-                            ))}
-                            {recipe.tags.length > 3 && (
-                              <span className="text-xs text-gray-500">
-                                +{recipe.tags.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Boutons d'action */}
-                        <div className="grid grid-cols-4 gap-2 mt-4">
-                          <button
-                            onClick={() => handleViewClick(recipe)}
-                            className="col-span-1 bg-indigo-600 text-white px-2 py-2 rounded-md hover:bg-indigo-700 transition text-sm"
-                            title="Voir les détails"
-                          >
-                            👁️
-                          </button>
-                          
-                          {isOwner ? (
-                            <>
-                              <button
-                                onClick={() => handleEditClick(recipe)}
-                                className="col-span-1 bg-gray-600 text-white px-2 py-2 rounded-md hover:bg-gray-700 transition text-sm"
-                                title="Modifier la recette"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(recipe)}
-                                className="col-span-1 bg-red-600 text-white px-2 py-2 rounded-md hover:bg-red-700 transition text-sm"
-                                title="Supprimer la recette"
-                              >
-                                🗑️
-                              </button>
-                            </>
+                        {/* Image */}
+                        <div className="relative aspect-video overflow-hidden">
+                          {recipe.imageUrl ? (
+                            <img
+                              src={`http://localhost:5000${recipe.imageUrl}`}
+                              alt={recipe.title}
+                              className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                              loading="lazy"
+                            />
                           ) : (
-                            <>
-                              <div className="col-span-1"></div>
-                              <div className="col-span-1"></div>
-                            </>
+                            <div className="w-full h-full bg-gradient-to-r from-primary-100 to-secondary-100 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
+                              <span className="text-3xl sm:text-4xl animate-float">🍳</span>
+                            </div>
                           )}
                           
-                          <button
-                            onClick={() => handleAddToListClick(recipe)}
-                            className="col-span-1 text-white px-2 py-2 rounded-md hover:opacity-80 transition text-sm"
-                            style={{backgroundColor: '#ffb6c1'}}
-                            title="Ajouter à la liste de courses"
-                          >
-                            🛒
-                          </button>
+                          {/* Badge difficulté */}
+                          <div className="absolute top-2 right-2">
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              recipe.difficulty === 'Facile' ? 'bg-green-500' :
+                              recipe.difficulty === 'Moyen' ? 'bg-yellow-500' : 'bg-red-500'
+                            } text-white`}>
+                              {recipe.difficulty}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Message si ce n'est pas votre recette */}
-                        {!isOwner && user && (
-                          <p className="text-xs text-center mt-2 text-gray-500">
-                            Seul le propriétaire peut modifier/supprimer
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        {/* Contenu */}
+                        <div className="p-3 sm:p-4">
+                          <h3 className="text-sm sm:text-base font-semibold text-neutral-700 dark:text-white line-clamp-1 mb-1">
+                            {recipe.title}
+                          </h3>
+
+                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            <span>⏱️ {recipe.prepTime || '?'} min</span>
+                            <span>❤️ {recipe.likes || 0}</span>
+                          </div>
+
+                          {getRatingDisplay(recipe.id)}
+
+                          {/* Boutons d'action */}
+                          <div className="grid grid-cols-4 gap-1 sm:gap-2 mt-2">
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewClick(recipe);
+                              }}
+                              className="p-2 bg-primary-100 dark:bg-primary-900 text-neutral-700 dark:text-white rounded-lg hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors"
+                              title="Voir"
+                            >
+                              👁️
+                            </motion.button>
+                            
+                            {isOwner && (
+                              <>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditClick(recipe);
+                                  }}
+                                  className="p-2 bg-secondary-100 dark:bg-gray-700 text-neutral-700 dark:text-white rounded-lg hover:bg-secondary-200 dark:hover:bg-gray-600 transition-colors"
+                                  title="Modifier"
+                                >
+                                  ✏️
+                                </motion.button>
+                                
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClick(recipe);
+                                  }}
+                                  className="p-2 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
+                                  title="Supprimer"
+                                >
+                                  🗑️
+                                </motion.button>
+                              </>
+                            )}
+                            
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToListClick(recipe);
+                              }}
+                              className="p-2 text-white rounded-lg hover:opacity-90 transition-colors"
+                              style={{ backgroundColor: '#ffb6c1' }}
+                              title="Ajouter à la liste"
+                            >
+                              🛒
+                            </motion.button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.div>
             )}
           </>
         )}
       </div>
 
-      {/* Modal de visualisation de recette */}
+      {/* Modals */}
       <ViewRecipeModal
         isOpen={isViewModalOpen}
         onClose={() => {
@@ -493,7 +481,6 @@ const SearchRecipes = () => {
         recipe={selectedRecipe}
       />
 
-      {/* Modal d'édition de recette */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => {
@@ -510,13 +497,15 @@ const SearchRecipes = () => {
             setSelectedRecipe(null);
           }}
           onSuccess={() => {
-            dispatch(fetchRecipes()); // Recharger les recettes
-            showTemporaryMessage('Recette modifiée avec succès !');
+            dispatch(fetchRecipes());
+            toast.success('Recette modifiée avec succès !', {
+              position: 'bottom-center',
+              id: 'edit-success'
+            });
           }}
         />
       </Modal>
 
-      {/* Modal de confirmation pour la suppression */}
       <ConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => {
@@ -526,17 +515,16 @@ const SearchRecipes = () => {
         onConfirm={handleConfirmDelete}
         title="🗑️ Confirmer la suppression"
         message={
-          <div>
+          <div className="text-neutral-700 dark:text-gray-200">
             <p className="mb-2">Êtes-vous sûr de vouloir supprimer :</p>
-            <p className="font-semibold text-lg" style={{color: '#8b5a2b'}}>"{recipeToDelete?.title}"</p>
-            <p className="mt-2 text-sm text-red-600">Cette action est irréversible !</p>
+            <p className="font-semibold text-lg">"{recipeToDelete?.title}"</p>
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400">Cette action est irréversible !</p>
           </div>
         }
         confirmText="Oui, supprimer"
         cancelText="Annuler"
       />
 
-      {/* Modal de confirmation pour l'ajout à la liste */}
       <ConfirmModal
         isOpen={showAddToListConfirm}
         onClose={() => {
@@ -546,31 +534,14 @@ const SearchRecipes = () => {
         onConfirm={handleConfirmAddToList}
         title="🛒 Ajouter à la liste de courses"
         message={
-          <div>
+          <div className="text-neutral-700 dark:text-gray-200">
             <p className="mb-2">Voulez-vous ajouter à votre liste de courses :</p>
-            <p className="font-semibold text-lg" style={{color: '#8b5a2b'}}>"{recipeToAdd?.title}"</p>
+            <p className="font-semibold text-lg">"{recipeToAdd?.title}"</p>
           </div>
         }
         confirmText="Oui, ajouter"
         cancelText="Non"
       />
-
-      {/* Styles pour l'animation */}
-      <style jsx>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        .animate-slideIn {
-          animation: slideIn 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 };

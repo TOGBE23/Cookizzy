@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-color: #f5f0e8;
+  --surface-color: #ffffff;
+  --text-color: #8b5a2b;
+  --text-secondary: #a0522d;
+  --border-color: #e8ddd0;
+  --primary-color: #ffb6c1;
+  --secondary-color: #fff9e6;
+  --accent-color: #d8f0d8;
+}
+
+.dark {
+  --bg-color: #1a1a1a;
+  --surface-color: #2d2d2d;
+  --text-color: #f0e6d2;
+  --text-secondary: #c4a484;
+  --border-color: #404040;
+  --primary-color: #b38b8b;
+  --secondary-color: #3d3d3d;
+  --accent-color: #2d4a2d;
+}
+
+* {
+  transition: background-color 0.3s ease, color 0.2s ease, border-color 0.3s ease;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -9,19 +35,119 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-color);
+  color: var(--text-color);
 }
 
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+/* Classes utilitaires */
+.bg-surface {
+  background-color: var(--surface-color) !important;
 }
 
-.modal-content {
-  animation: modalFadeIn 0.3s ease-out;
+.text-primary {
+  color: var(--text-color) !important;
+}
+
+.text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.border-custom {
+  border-color: var(--border-color) !important;
+}
+
+/* Cards et conteneurs */
+.card {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.dark .card {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Inputs */
+input, textarea, select {
+  background-color: var(--surface-color);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  ring-color: var(--primary-color);
+}
+
+/* Boutons */
+.btn-primary {
+  background-color: var(--primary-color);
+  color: var(--text-color);
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin 3s linear infinite;
+}
+
+/* Transitions de page */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.page-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }

@@ -142,7 +142,7 @@ if (image && image.size > 10 * 1024 * 1024) {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Ajouter une recette</h1>
+        <h1 className="text-3xl font-bold  text-gray-900 mb-8">Ajouter une recette</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
           {/* Informations de base */}

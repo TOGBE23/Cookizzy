@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { fetchComments, addComment, deleteComment } from '../store/slices/socialSlice';
 import RatingStars from './RatingStars';
+import ConfirmModal from './ConfirmModal';
 
 const CommentsSection = ({ recipeId }) => {
   const dispatch = useDispatch();
@@ -13,6 +16,10 @@ const CommentsSection = ({ recipeId }) => {
   const [rating, setRating] = useState(0);
   const [showRating, setShowRating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  // États pour la confirmation de suppression
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
 
   useEffect(() => {
     if (recipeId) {
@@ -23,12 +30,18 @@ const CommentsSection = ({ recipeId }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
-      alert('Veuillez vous connecter pour commenter');
+      toast.error('Veuillez vous connecter pour commenter', {
+        position: 'bottom-center',
+        id: 'login-to-comment'
+      });
       return;
     }
 
     if (newComment.trim() === '') {
-      alert('Veuillez écrire un commentaire');
+      toast.error('Veuillez écrire un commentaire', {
+        position: 'bottom-center',
+        id: 'empty-comment'
+      });
       return;
     }
 
@@ -43,11 +56,28 @@ const CommentsSection = ({ recipeId }) => {
     setNewComment('');
     setRating(0);
     setShowRating(false);
+    
+    toast.success('Commentaire ajouté !', {
+      position: 'bottom-center',
+      duration: 2000,
+      id: 'comment-added'
+    });
   };
 
-  const handleDelete = (commentId) => {
-    if (window.confirm('Supprimer ce commentaire ?')) {
-      dispatch(deleteComment(commentId));
+  const handleDeleteClick = (comment) => {
+    setCommentToDelete(comment);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (commentToDelete) {
+      dispatch(deleteComment(commentToDelete.id));
+      toast.success('Commentaire supprimé', {
+        position: 'bottom-center',
+        duration: 2000,
+        id: 'comment-deleted'
+      });
+      setCommentToDelete(null);
     }
   };
 
@@ -60,38 +90,53 @@ const CommentsSection = ({ recipeId }) => {
     if (diffDays === 0) return "Aujourd'hui";
     if (diffDays === 1) return "Hier";
     if (diffDays < 7) return `Il y a ${diffDays} jours`;
-    return date.toLocaleDateString('fr-FR');
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
   };
 
   return (
     <div className="mt-8">
-      <h2 className="text-2xl font-semibold mb-6" style={{color: '#8b5a2b'}}>
+      <h2 className="text-lg sm:text-xl font-semibold mb-6 text-neutral-700 dark:text-white">
         Commentaires ({recipeComments.length})
       </h2>
 
       {/* Formulaire d'ajout */}
       {user ? (
-        <form onSubmit={handleSubmit} className="mb-8 p-4 rounded-lg" style={{backgroundColor: '#f5f0e8'}}>
+        <motion.form
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          onSubmit={handleSubmit}
+          className="mb-8 p-4 rounded-xl bg-secondary-100 dark:bg-gray-700"
+        >
           <div className="mb-4">
             <button
               type="button"
               onClick={() => setShowRating(!showRating)}
-              className="text-sm mb-2 px-3 py-1 rounded-full"
-              style={{backgroundColor: '#ffb6c1', color: '#8b5a2b'}}
+              className="text-sm mb-2 px-3 py-1 rounded-full bg-primary-100 dark:bg-primary-900 text-neutral-700 dark:text-white hover:opacity-90 transition"
             >
               {showRating ? 'Masquer la note' : 'Ajouter une note'}
             </button>
             
-            {showRating && (
-              <div className="mb-4">
-                <p className="text-sm mb-2" style={{color: '#8b5a2b'}}>Votre note :</p>
-                <RatingStars
-                  rating={rating}
-                  onRate={setRating}
-                  size="h-8 w-8"
-                />
-              </div>
-            )}
+            <AnimatePresence>
+              {showRating && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mb-4"
+                >
+                  <p className="text-sm mb-2 text-neutral-700 dark:text-gray-300">Votre note :</p>
+                  <RatingStars
+                    rating={rating}
+                    onRate={setRating}
+                    size="h-6 w-6 sm:h-8 sm:w-8"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <textarea
@@ -99,83 +144,128 @@ const CommentsSection = ({ recipeId }) => {
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Partagez votre avis sur cette recette..."
             rows="3"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md mb-3"
-            style={{backgroundColor: '#fff9e6'}}
+            className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-neutral-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-100 dark:focus:ring-primary-800 transition-all mb-3"
             disabled={submitting}
           />
 
           <button
             type="submit"
             disabled={submitting}
-            className="px-4 py-2 text-white rounded-md hover:opacity-80 disabled:opacity-50"
-            style={{backgroundColor: '#c4a484'}}
+            className="px-4 py-2 bg-red-500 dark:bg-primary-dark text-white rounded-lg hover:opacity-90 transition disabled:opacity-50"
           >
             {submitting ? 'Publication...' : 'Publier le commentaire'}
           </button>
-        </form>
+        </motion.form>
       ) : (
-        <div className="mb-8 p-4 text-center rounded-lg" style={{backgroundColor: '#f5f0e8'}}>
-          <p className="text-gray-600">
-            <a href="/login" className="text-indigo-600 hover:text-indigo-800 font-medium">Connectez-vous</a> pour laisser un commentaire
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mb-8 p-4 text-center rounded-xl bg-secondary-100 dark:bg-gray-700"
+        >
+          <p className="text-gray-600 dark:text-gray-300">
+            <a href="/login" className="text-primary-dark dark:text-primary-light hover:underline font-medium">
+              Connectez-vous
+            </a> pour laisser un commentaire
           </p>
-        </div>
+        </motion.div>
       )}
 
       {/* Liste des commentaires */}
       {isLoading ? (
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{borderColor: '#c4a484'}}></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-100 dark:border-primary-800 border-t-transparent mx-auto"></div>
         </div>
       ) : recipeComments.length === 0 ? (
-        <p className="text-center py-8 text-gray-500 italic">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-8 text-gray-500 dark:text-gray-400 italic"
+        >
           Aucun commentaire pour le moment. Soyez le premier à commenter !
-        </p>
+        </motion.p>
       ) : (
         <div className="space-y-4">
-          {recipeComments.map((comment) => (
-            <div key={comment.id} className="p-4 rounded-lg" style={{backgroundColor: '#fff9e6'}}>
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center">
-                  {comment.profileImage ? (
-                    <img
-                      src={`http://localhost:5000${comment.profileImage}`}
-                      alt={comment.username}
-                      className="w-10 h-10 rounded-full mr-3 object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gray-300 mr-3 flex items-center justify-center">
-                      <span className="text-lg">👤</span>
+          <AnimatePresence>
+            {recipeComments.map((comment) => (
+              <motion.div
+                key={comment.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                className="p-4 rounded-xl bg-white dark:bg-gray-700 shadow-soft"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center">
+                    {comment.profileImage ? (
+                      <img
+                        src={`http://localhost:5000${comment.profileImage}`}
+                        alt={comment.username}
+                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full mr-3 object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 dark:bg-gray-600 mr-3 flex items-center justify-center">
+                        <span className="text-sm sm:text-base">👤</span>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-semibold text-sm sm:text-base text-neutral-700 dark:text-white">
+                        {comment.username}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatDate(comment.createdAt)}
+                      </p>
                     </div>
-                  )}
-                  <div>
-                    <p className="font-semibold" style={{color: '#8b5a2b'}}>{comment.username}</p>
-                    <p className="text-xs text-gray-500">{formatDate(comment.createdAt)}</p>
                   </div>
+                  
+                  {user && comment.userId === user.id && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleDeleteClick(comment)}
+                      className="p-1.5 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                      title="Supprimer"
+                    >
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </motion.button>
+                  )}
                 </div>
-                
-                {user && comment.userId === user.id && (
-                  <button
-                    onClick={() => handleDelete(comment.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </button>
+
+                {/* Note du commentaire */}
+                {comment.rating && (
+                  <div className="mb-2">
+                    <RatingStars rating={comment.rating} readonly size="h-3 w-3 sm:h-4 sm:w-4" />
+                  </div>
                 )}
-              </div>
 
-              {comment.rating && (
-                <div className="mb-2">
-                  <RatingStars rating={comment.rating} readonly size="h-4 w-4" />
-                </div>
-              )}
-
-              <p className="text-gray-700">{comment.content}</p>
-            </div>
-          ))}
+                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300">
+                  {comment.content}
+                </p>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
+
+      {/* Modal de confirmation pour la suppression */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setCommentToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="🗑️ Supprimer le commentaire"
+        message={
+          <div className="text-neutral-700 dark:text-gray-200">
+            <p className="mb-2">Êtes-vous sûr de vouloir supprimer ce commentaire ?</p>
+            <p className="text-sm text-red-600 dark:text-red-400">Cette action est irréversible !</p>
+          </div>
+        }
+        confirmText="Oui, supprimer"
+        cancelText="Annuler"
+      />
     </div>
   );
 };

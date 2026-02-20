@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { fetchUserRecipes, deleteRecipe } from '../store/slices/recipeSlice';
 import { addRecipeToSelection } from '../store/slices/shoppingSlice';
 import Modal from '../components/Modal';
@@ -24,23 +26,12 @@ const MyRecipes = () => {
   const [recipeToDelete, setRecipeToDelete] = useState(null);
   const [showAddToListConfirm, setShowAddToListConfirm] = useState(false);
   const [recipeToAdd, setRecipeToAdd] = useState(null);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (user) {
       dispatch(fetchUserRecipes(user.id));
     }
   }, [dispatch, user]);
-
-  // Fonction pour afficher un message de succès temporaire
-  const showTemporaryMessage = (message) => {
-    setSuccessMessage(message);
-    setShowSuccessMessage(true);
-    setTimeout(() => {
-      setShowSuccessMessage(false);
-    }, 3000);
-  };
 
   const handleViewClick = (recipe) => {
     setSelectedRecipe(recipe);
@@ -60,7 +51,11 @@ const MyRecipes = () => {
   const handleConfirmDelete = () => {
     if (recipeToDelete) {
       dispatch(deleteRecipe(recipeToDelete.id));
-      showTemporaryMessage(`"${recipeToDelete.title}" a été supprimé`);
+      toast.success(`"${recipeToDelete.title}" a été supprimé`, {
+        position: 'bottom-center',
+        duration: 2000,
+        id: 'delete-success'
+      });
       setRecipeToDelete(null);
     }
   };
@@ -73,165 +68,195 @@ const MyRecipes = () => {
   const handleConfirmAddToList = () => {
     if (recipeToAdd) {
       dispatch(addRecipeToSelection(recipeToAdd.id));
-      showTemporaryMessage(`"${recipeToAdd.title}" ajouté à la liste de courses`);
+      toast.success(`"${recipeToAdd.title}" ajouté à la liste`, {
+        position: 'bottom-center',
+        duration: 2000,
+        id: 'add-to-list-success'
+      });
       setRecipeToAdd(null);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-100 dark:bg-gray-900 flex items-center justify-center transition-colors duration-300">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{borderColor: '#c4a484'}}></div>
-          <p className="mt-4 text-gray-600">Chargement de vos recettes...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary-100 dark:border-primary-800 border-t-transparent mx-auto"></div>
+          <p className="mt-4 text-neutral-600 dark:text-gray-300">Chargement de vos recettes...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#f5f0e8'}}>
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Message de succès flottant */}
-        {showSuccessMessage && (
-          <div className="fixed top-20 right-4 z-50 animate-slideIn">
-            <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
-              <span>✅</span>
-              <span>{successMessage}</span>
-            </div>
+    <div className="min-h-screen bg-neutral-100 dark:bg-gray-900 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-700 dark:text-white">
+              Mes recettes <span className="text-sm font-normal ml-2 text-neutral-600 dark:text-gray-300">({userRecipes.length})</span>
+            </h1>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsAddModalOpen(true)}
+              className="w-full sm:w-auto bg-primary-main dark:bg-primary-dark text-blue px-4 py-2 rounded-lg hover:opacity-90 transition flex items-center justify-center gap-2"
+            >
+              <span>+</span> Ajouter une recette
+            </motion.button>
           </div>
-        )}
+        </motion.div>
 
-        {/* En-tête */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold" style={{color: '#8b5a2b'}}>
-            Mes recettes ({userRecipes.length})
-          </h1>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center gap-2 transition"
-          >
-            <span>+</span> Ajouter une recette
-          </button>
-        </div>
-
-        {/* Liste des recettes */}
         {userRecipes.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-500 text-lg mb-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-12 text-center"
+          >
+            <p className="text-gray-600 dark:text-gray-300 text-lg mb-4">
               Vous n'avez pas encore de recettes
             </p>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setIsAddModalOpen(true)}
-              className="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition"
+              className="bg-primary-main dark:bg-primary-dark text-white px-6 py-3 rounded-lg hover:opacity-90 transition"
             >
               Créer ma première recette
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {userRecipes.map((recipe) => (
-              <div 
-                key={recipe.id} 
-                className="bg-white rounded-lg shadow overflow-hidden hover:shadow-xl transition-all transform hover:-translate-y-1"
-              >
-                {/* Image de la recette */}
-                <div 
-                  className="cursor-pointer overflow-hidden h-48"
-                  onClick={() => handleViewClick(recipe)}
-                >
-                  {recipe.imageUrl ? (
-                    <img 
-                      src={`http://localhost:5000${recipe.imageUrl}`} 
-                      alt={recipe.title}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center">
-                      <span className="text-4xl">🍳</span>
-                    </div>
-                  )}
-                </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
+          >
+            <AnimatePresence>
+              {userRecipes.map((recipe) => {
+                const isOwner = user && parseInt(user.id) === parseInt(recipe.authorId);
                 
-                <div className="p-6">
-                  <h2 
-                    className="text-xl font-semibold mb-2 cursor-pointer hover:text-indigo-600 transition"
-                    style={{color: '#8b5a2b'}}
+                return (
+                  <motion.div
+                    key={recipe.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    whileHover={{ y: -4 }}
+                    className="bg-white dark:bg-gray-800 rounded-xl shadow-soft hover:shadow-medium overflow-hidden cursor-pointer transition-all"
                     onClick={() => handleViewClick(recipe)}
                   >
-                    {recipe.title}
-                  </h2>
-                  
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {recipe.description || 'Pas de description'}
-                  </p>
-                  
-                  <div className="flex items-center text-sm text-gray-500 mb-4">
-                    <span className="mr-4">⏱️ {recipe.prepTime || '?'} min</span>
-                    <span className="mr-4">📊 {recipe.difficulty}</span>
-                    <span>🍽️ {recipe.category || 'Non catégorisé'}</span>
-                  </div>
-
-                  {/* Tags */}
-                  {recipe.tags && recipe.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {recipe.tags.slice(0, 3).map(tag => (
-                        <span 
-                          key={tag} 
-                          className="px-2 py-1 rounded-full text-xs"
-                          style={{backgroundColor: '#ffd8b0', color: '#8b5a2b'}}
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                      {recipe.tags.length > 3 && (
-                        <span className="text-xs text-gray-500">
-                          +{recipe.tags.length - 3}
-                        </span>
+                    {/* Image */}
+                    <div className="relative aspect-video overflow-hidden">
+                      {recipe.imageUrl ? (
+                        <img
+                          src={`http://localhost:5000${recipe.imageUrl}`}
+                          alt={recipe.title}
+                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-r from-primary-100 to-secondary-100 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
+                          <span className="text-3xl sm:text-4xl animate-float">🍳</span>
+                        </div>
                       )}
+                      
+                      {/* Badge difficulté */}
+                      <div className="absolute top-2 right-2">
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          recipe.difficulty === 'Facile' ? 'bg-green-500' :
+                          recipe.difficulty === 'Moyen' ? 'bg-yellow-500' : 'bg-red-500'
+                        } text-white`}>
+                          {recipe.difficulty}
+                        </span>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Boutons d'action */}
-                  <div className="grid grid-cols-4 gap-2">
-                    <button
-                      onClick={() => handleViewClick(recipe)}
-                      className="col-span-1 bg-indigo-600 text-white px-2 py-2 rounded-md hover:bg-indigo-700 text-sm transition"
-                      title="Voir les détails"
-                    >
-                      👁️
-                    </button>
-                    <button
-                      onClick={() => handleEditClick(recipe)}
-                      className="col-span-1 bg-gray-600 text-white px-2 py-2 rounded-md hover:bg-gray-700 text-sm transition"
-                      title="Modifier la recette"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(recipe)}
-                      className="col-span-1 bg-red-600 text-white px-2 py-2 rounded-md hover:bg-red-700 text-sm transition"
-                      title="Supprimer la recette"
-                    >
-                      🗑️
-                    </button>
-                    <button
-                      onClick={() => handleAddToListClick(recipe)}
-                      className="col-span-1 text-white px-2 py-2 rounded-md hover:opacity-80 transition text-sm"
-                      style={{backgroundColor: '#ffb6c1'}}
-                      title="Ajouter à la liste de courses"
-                    >
-                      🛒
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                    {/* Contenu */}
+                    <div className="p-3 sm:p-4">
+                      <h3 className="text-sm sm:text-base font-semibold text-neutral-700 dark:text-white line-clamp-1 mb-1">
+                        {recipe.title}
+                      </h3>
+
+                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        <span>⏱️ {recipe.prepTime || '?'} min</span>
+                        <span>❤️ {recipe.likes || 0}</span>
+                      </div>
+
+                      {/* Boutons d'action */}
+                      <div className="grid grid-cols-4 gap-1 sm:gap-2 mt-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewClick(recipe);
+                          }}
+                          className="p-2 bg-primary-100 dark:bg-primary-900 text-neutral-700 dark:text-white rounded-lg hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors"
+                          title="Voir"
+                        >
+                          👁️
+                        </motion.button>
+                        
+                        {isOwner && (
+                          <>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClick(recipe);
+                              }}
+                              className="p-2 bg-secondary-100 dark:bg-gray-700 text-neutral-700 dark:text-white rounded-lg hover:bg-secondary-200 dark:hover:bg-gray-600 transition-colors"
+                              title="Modifier"
+                            >
+                              ✏️
+                            </motion.button>
+                            
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(recipe);
+                              }}
+                              className="p-2 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
+                              title="Supprimer"
+                            >
+                              🗑️
+                            </motion.button>
+                          </>
+                        )}
+                        
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToListClick(recipe);
+                          }}
+                          className="p-2 text-white rounded-lg hover:opacity-90 transition-colors"
+                          style={{ backgroundColor: '#ffb6c1' }}
+                          title="Ajouter à la liste"
+                        >
+                          🛒
+                        </motion.button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
 
-      {/* Modal d'ajout de recette */}
+      {/* Modals */}
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
@@ -244,12 +269,14 @@ const MyRecipes = () => {
             if (user) {
               dispatch(fetchUserRecipes(user.id));
             }
-            showTemporaryMessage('Recette ajoutée avec succès !');
+            toast.success('Recette ajoutée avec succès !', {
+              position: 'bottom-center',
+              id: 'add-success'
+            });
           }}
         />
       </Modal>
 
-      {/* Modal de visualisation de recette */}
       <ViewRecipeModal
         isOpen={isViewModalOpen}
         onClose={() => {
@@ -259,7 +286,6 @@ const MyRecipes = () => {
         recipe={selectedRecipe}
       />
 
-      {/* Modal d'édition de recette */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => {
@@ -279,12 +305,14 @@ const MyRecipes = () => {
             if (user) {
               dispatch(fetchUserRecipes(user.id));
             }
-            showTemporaryMessage('Recette modifiée avec succès !');
+            toast.success('Recette modifiée avec succès !', {
+              position: 'bottom-center',
+              id: 'edit-success'
+            });
           }}
         />
       </Modal>
 
-      {/* Modal de confirmation pour la suppression */}
       <ConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => {
@@ -294,17 +322,16 @@ const MyRecipes = () => {
         onConfirm={handleConfirmDelete}
         title="🗑️ Confirmer la suppression"
         message={
-          <div>
+          <div className="text-neutral-700 dark:text-gray-200">
             <p className="mb-2">Êtes-vous sûr de vouloir supprimer :</p>
-            <p className="font-semibold text-lg" style={{color: '#8b5a2b'}}>"{recipeToDelete?.title}"</p>
-            <p className="mt-2 text-sm text-red-600">Cette action est irréversible !</p>
+            <p className="font-semibold text-lg">"{recipeToDelete?.title}"</p>
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400">Cette action est irréversible !</p>
           </div>
         }
         confirmText="Oui, supprimer"
         cancelText="Annuler"
       />
 
-      {/* Modal de confirmation pour l'ajout à la liste */}
       <ConfirmModal
         isOpen={showAddToListConfirm}
         onClose={() => {
@@ -314,31 +341,14 @@ const MyRecipes = () => {
         onConfirm={handleConfirmAddToList}
         title="🛒 Ajouter à la liste de courses"
         message={
-          <div>
+          <div className="text-neutral-700 dark:text-gray-200">
             <p className="mb-2">Voulez-vous ajouter à votre liste de courses :</p>
-            <p className="font-semibold text-lg" style={{color: '#8b5a2b'}}>"{recipeToAdd?.title}"</p>
+            <p className="font-semibold text-lg">"{recipeToAdd?.title}"</p>
           </div>
         }
         confirmText="Oui, ajouter"
         cancelText="Non"
       />
-
-      {/* Styles pour l'animation */}
-      <style jsx>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        .animate-slideIn {
-          animation: slideIn 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 };
