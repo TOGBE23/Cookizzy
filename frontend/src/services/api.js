@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// URL du backend en ligne (FORCÉE)
+// URL FIXE du backend en ligne (plus de variable d'env)
 const API_URL = 'https://cookizzy-backend.onrender.com/api';
 
 console.log('🚀 API URL forcée:', API_URL);
