@@ -11,16 +11,17 @@ module.exports = (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Récupérer l'utilisateur depuis la base de données
-    db.get('SELECT id, username, email, role FROM users WHERE id = ?', [decoded.id], (err, user) => {
-      if (err || !user) {
-        return res.status(401).json({ message: 'Utilisateur non trouvé' });
-      }
-      
-      req.user = user;
-      req.userId = user.id;
-      next();
-    });
+    // ✅ CORRECTION : better-sqlite3 est synchrone, pas de callback
+    const user = db.prepare('SELECT id, username, email, role FROM users WHERE id = ?').get(decoded.id);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Utilisateur non trouvé' });
+    }
+    
+    req.user = user;
+    req.userId = user.id;
+    next();
+
   } catch (error) {
     res.status(401).json({ message: 'Token invalide' });
   }

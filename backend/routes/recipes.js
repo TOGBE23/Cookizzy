@@ -4,11 +4,18 @@ const db = require('../config/database');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+
+// S'assurer que le dossier uploads existe
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Configuration de multer pour l'upload d'images
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -18,12 +25,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // Augmenté à 20MB
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -32,268 +38,171 @@ const upload = multer({
   }
 });
 
-// Obtenir toutes les recettes (public)
+// ✅ Obtenir toutes les recettes (public)
 router.get('/', (req, res) => {
-  db.all('SELECT * FROM recipes ORDER BY createdAt DESC', [], (err, rows) => {
-    if (err) {
-      console.error('Erreur DB:', err);
-      return res.status(500).json({ message: 'Erreur serveur' });
-    }
-    
-    try {
-      const recipes = rows.map(row => ({
-        ...row,
-        ingredients: JSON.parse(row.ingredients),
-        steps: JSON.parse(row.steps),
-        tags: row.tags ? JSON.parse(row.tags) : []
-      }));
-      res.json(recipes);
-    } catch (parseErr) {
-      console.error('Erreur de parsing:', parseErr);
-      res.status(500).json({ message: 'Erreur de format des données' });
-    }
-  });
-});
-
-// Obtenir une recette par ID (public)
-router.get('/:id', (req, res) => {
-  const { id } = req.params;
-  
-  db.get('SELECT * FROM recipes WHERE id = ?', [id], (err, row) => {
-    if (err) {
-      console.error('Erreur DB:', err);
-      return res.status(500).json({ message: 'Erreur serveur' });
-    }
-    if (!row) {
-      return res.status(404).json({ message: 'Recette non trouvée' });
-    }
-    
-    try {
-      const recipe = {
-        ...row,
-        ingredients: JSON.parse(row.ingredients),
-        steps: JSON.parse(row.steps),
-        tags: row.tags ? JSON.parse(row.tags) : []
-      };
-      res.json(recipe);
-    } catch (parseErr) {
-      console.error('Erreur de parsing:', parseErr);
-      res.status(500).json({ message: 'Erreur de format des données' });
-    }
-  });
-});
-
-// Ajouter une recette avec image (protégé)
-router.post('/', auth, upload.single('image'), (req, res) => {
-  console.log('Données reçues - body:', req.body);
-  console.log('Fichier reçu - file:', req.file);
-  
-  const { title, description, prepTime, difficulty, category } = req.body;
-  const authorId = req.userId;
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-  
-  let ingredients, steps, tags;
-
   try {
-    ingredients = req.body.ingredients ? JSON.parse(req.body.ingredients) : [];
-    steps = req.body.steps ? JSON.parse(req.body.steps) : [];
-    tags = req.body.tags ? JSON.parse(req.body.tags) : [];
-  } catch (parseErr) {
-    console.error('Erreur de parsing JSON:', parseErr);
-    return res.status(400).json({ message: 'Format de données invalide' });
+    const rows = db.prepare('SELECT * FROM recipes ORDER BY createdAt DESC').all();
+    const recipes = rows.map(row => ({
+      ...row,
+      ingredients: JSON.parse(row.ingredients),
+      steps: JSON.parse(row.steps),
+      tags: row.tags ? JSON.parse(row.tags) : []
+    }));
+    res.json(recipes);
+  } catch (err) {
+    console.error('Erreur DB:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
   }
+});
 
-  if (!title) {
-    return res.status(400).json({ message: 'Le titre est requis' });
-  }
-  if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
-    return res.status(400).json({ message: 'Les ingrédients sont requis' });
-  }
-  if (!steps || !Array.isArray(steps) || steps.length === 0) {
-    return res.status(400).json({ message: 'Les étapes sont requises' });
-  }
-
-  const ingredientsJSON = JSON.stringify(ingredients);
-  const stepsJSON = JSON.stringify(steps);
-  const tagsJSON = JSON.stringify(tags);
-
-  db.run(
-    `INSERT INTO recipes (title, description, ingredients, steps, prepTime, difficulty, category, authorId, tags, imageUrl)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [title, description, ingredientsJSON, stepsJSON, prepTime, difficulty, category, authorId, tagsJSON, imageUrl],
-    function(err) {
-      if (err) {
-        console.error('Erreur DB:', err);
-        return res.status(500).json({ message: 'Erreur lors de la création: ' + err.message });
+// ✅ Obtenir les recettes d'un utilisateur (protégé) - DOIT être avant /:id
+router.get('/user/:userId', auth, (req, res) => {
+  try {
+    const { userId } = req.params;
+    const rows = db.prepare('SELECT * FROM recipes WHERE authorId = ? ORDER BY createdAt DESC').all(userId);
+    const recipes = rows.map(row => {
+      try {
+        return {
+          ...row,
+          ingredients: JSON.parse(row.ingredients),
+          steps: JSON.parse(row.steps),
+          tags: row.tags ? JSON.parse(row.tags) : []
+        };
+      } catch (parseErr) {
+        return { ...row, ingredients: [], steps: [], tags: [] };
       }
-      
-      res.status(201).json({
-        id: this.lastID,
-        title,
-        description,
-        ingredients,
-        steps,
-        prepTime,
-        difficulty,
-        category,
-        authorId,
-        tags,
-        imageUrl
-      });
-    }
-  );
+    });
+    res.json(recipes);
+  } catch (err) {
+    console.error('Erreur DB:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
 });
 
-// Mettre à jour une recette avec image (protégé)
-router.put('/:id', auth, upload.single('image'), (req, res) => {
-  const { id } = req.params;
-  const { title, description, prepTime, difficulty, category, removeImage } = req.body;
-  const userId = req.userId;
-  
-  console.log('Mise à jour - ID:', id);
-  console.log('Données reçues - body:', req.body);
-  console.log('Fichier reçu - file:', req.file);
-  console.log('Remove image:', removeImage);
-
-  let ingredients, steps, tags;
-
+// ✅ Obtenir une recette par ID (public)
+router.get('/:id', (req, res) => {
   try {
-    ingredients = req.body.ingredients ? JSON.parse(req.body.ingredients) : [];
-    steps = req.body.steps ? JSON.parse(req.body.steps) : [];
-    tags = req.body.tags ? JSON.parse(req.body.tags) : [];
-  } catch (parseErr) {
-    console.error('Erreur de parsing JSON:', parseErr);
-    return res.status(400).json({ message: 'Format de données invalide' });
-  }
-
-  if (!title) {
-    return res.status(400).json({ message: 'Le titre est requis' });
-  }
-
-  db.get('SELECT authorId, imageUrl FROM recipes WHERE id = ?', [id], (err, row) => {
-    if (err) {
-      console.error('Erreur DB:', err);
-      return res.status(500).json({ message: 'Erreur serveur' });
-    }
+    const { id } = req.params;
+    const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id);
+    
     if (!row) {
       return res.status(404).json({ message: 'Recette non trouvée' });
     }
-    if (row.authorId !== userId) {
-      return res.status(403).json({ message: 'Non autorisé' });
+    
+    const recipe = {
+      ...row,
+      ingredients: JSON.parse(row.ingredients),
+      steps: JSON.parse(row.steps),
+      tags: row.tags ? JSON.parse(row.tags) : []
+    };
+    res.json(recipe);
+  } catch (err) {
+    console.error('Erreur DB:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// ✅ Ajouter une recette (protégé)
+router.post('/', auth, upload.single('image'), (req, res) => {
+  try {
+    const { title, description, prepTime, difficulty, category } = req.body;
+    const authorId = req.userId;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+    let ingredients, steps, tags;
+    try {
+      ingredients = req.body.ingredients ? JSON.parse(req.body.ingredients) : [];
+      steps = req.body.steps ? JSON.parse(req.body.steps) : [];
+      tags = req.body.tags ? JSON.parse(req.body.tags) : [];
+    } catch (parseErr) {
+      return res.status(400).json({ message: 'Format de données invalide' });
     }
+
+    if (!title) return res.status(400).json({ message: 'Le titre est requis' });
+    if (!ingredients.length) return res.status(400).json({ message: 'Les ingrédients sont requis' });
+    if (!steps.length) return res.status(400).json({ message: 'Les étapes sont requises' });
+
+    const result = db.prepare(
+      `INSERT INTO recipes (title, description, ingredients, steps, prepTime, difficulty, category, authorId, tags, imageUrl)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(title, description, JSON.stringify(ingredients), JSON.stringify(steps), prepTime, difficulty, category, authorId, JSON.stringify(tags), imageUrl);
+
+    res.status(201).json({
+      id: result.lastInsertRowid,
+      title, description, ingredients, steps,
+      prepTime, difficulty, category, authorId, tags, imageUrl
+    });
+  } catch (err) {
+    console.error('Erreur DB:', err);
+    res.status(500).json({ message: 'Erreur serveur: ' + err.message });
+  }
+});
+
+// ✅ Mettre à jour une recette (protégé)
+router.put('/:id', auth, upload.single('image'), (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, prepTime, difficulty, category, removeImage } = req.body;
+    const userId = req.userId;
+
+    let ingredients, steps, tags;
+    try {
+      ingredients = req.body.ingredients ? JSON.parse(req.body.ingredients) : [];
+      steps = req.body.steps ? JSON.parse(req.body.steps) : [];
+      tags = req.body.tags ? JSON.parse(req.body.tags) : [];
+    } catch (parseErr) {
+      return res.status(400).json({ message: 'Format de données invalide' });
+    }
+
+    if (!title) return res.status(400).json({ message: 'Le titre est requis' });
+
+    const row = db.prepare('SELECT authorId, imageUrl FROM recipes WHERE id = ?').get(id);
+    if (!row) return res.status(404).json({ message: 'Recette non trouvée' });
+    if (row.authorId !== userId) return res.status(403).json({ message: 'Non autorisé' });
 
     let imageUrl;
     if (req.file) {
       imageUrl = `/uploads/${req.file.filename}`;
-      console.log('Nouvelle image:', imageUrl);
     } else if (removeImage === 'true') {
       imageUrl = null;
-      console.log('Image supprimée');
     } else {
       imageUrl = row.imageUrl;
-      console.log('Image conservée:', imageUrl);
     }
 
-    const ingredientsJSON = JSON.stringify(ingredients);
-    const stepsJSON = JSON.stringify(steps);
-    const tagsJSON = JSON.stringify(tags);
+    db.prepare(
+      `UPDATE recipes SET title=?, description=?, ingredients=?, steps=?, prepTime=?, difficulty=?, category=?, tags=?, imageUrl=? WHERE id=?`
+    ).run(title, description, JSON.stringify(ingredients), JSON.stringify(steps), prepTime, difficulty, category, JSON.stringify(tags), imageUrl, id);
 
-    db.run(
-      `UPDATE recipes 
-       SET title = ?, description = ?, ingredients = ?, steps = ?, 
-           prepTime = ?, difficulty = ?, category = ?, tags = ?, imageUrl = ?
-       WHERE id = ?`,
-      [title, description, ingredientsJSON, stepsJSON, prepTime, difficulty, category, tagsJSON, imageUrl, id],
-      function(err) {
-        if (err) {
-          console.error('Erreur DB:', err);
-          return res.status(500).json({ message: 'Erreur lors de la mise à jour: ' + err.message });
-        }
-        
-        db.get('SELECT * FROM recipes WHERE id = ?', [id], (err, updatedRow) => {
-          if (err) {
-            return res.json({ message: 'Recette mise à jour avec succès' });
-          }
-          
-          try {
-            const recipe = {
-              ...updatedRow,
-              ingredients: JSON.parse(updatedRow.ingredients),
-              steps: JSON.parse(updatedRow.steps),
-              tags: updatedRow.tags ? JSON.parse(updatedRow.tags) : []
-            };
-            res.json(recipe);
-          } catch (parseErr) {
-            res.json({ message: 'Recette mise à jour avec succès' });
-          }
-        });
-      }
-    );
-  });
+    const updatedRow = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id);
+    const recipe = {
+      ...updatedRow,
+      ingredients: JSON.parse(updatedRow.ingredients),
+      steps: JSON.parse(updatedRow.steps),
+      tags: updatedRow.tags ? JSON.parse(updatedRow.tags) : []
+    };
+    res.json(recipe);
+  } catch (err) {
+    console.error('Erreur DB:', err);
+    res.status(500).json({ message: 'Erreur serveur: ' + err.message });
+  }
 });
 
-// Supprimer une recette (protégé)
+// ✅ Supprimer une recette (protégé)
 router.delete('/:id', auth, (req, res) => {
-  const { id } = req.params;
-  const userId = req.userId;
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
 
-  db.get('SELECT authorId FROM recipes WHERE id = ?', [id], (err, row) => {
-    if (err) {
-      console.error('Erreur DB:', err);
-      return res.status(500).json({ message: 'Erreur serveur' });
-    }
-    if (!row) {
-      return res.status(404).json({ message: 'Recette non trouvée' });
-    }
-    if (row.authorId !== userId) {
-      return res.status(403).json({ message: 'Non autorisé' });
-    }
+    const row = db.prepare('SELECT authorId FROM recipes WHERE id = ?').get(id);
+    if (!row) return res.status(404).json({ message: 'Recette non trouvée' });
+    if (row.authorId !== userId) return res.status(403).json({ message: 'Non autorisé' });
 
-    db.run('DELETE FROM recipes WHERE id = ?', [id], function(err) {
-      if (err) {
-        console.error('Erreur DB:', err);
-        return res.status(500).json({ message: 'Erreur lors de la suppression' });
-      }
-      res.json({ message: 'Recette supprimée avec succès' });
-    });
-  });
-});
-
-// Obtenir les recettes d'un utilisateur (protégé)
-router.get('/user/:userId', auth, (req, res) => {
-  const { userId } = req.params;
-  
-  db.all('SELECT * FROM recipes WHERE authorId = ? ORDER BY createdAt DESC', [userId], (err, rows) => {
-    if (err) {
-      console.error('Erreur DB:', err);
-      return res.status(500).json({ message: 'Erreur serveur' });
-    }
-    
-    try {
-      const recipes = rows.map(row => {
-        try {
-          return {
-            ...row,
-            ingredients: JSON.parse(row.ingredients),
-            steps: JSON.parse(row.steps),
-            tags: row.tags ? JSON.parse(row.tags) : []
-          };
-        } catch (parseErr) {
-          console.log('Erreur parsing pour recette ID:', row.id);
-          return {
-            ...row,
-            ingredients: [],
-            steps: [],
-            tags: []
-          };
-        }
-      });
-      res.json(recipes);
-    } catch (parseErr) {
-      console.error('Erreur de parsing:', parseErr);
-      res.status(500).json({ message: 'Erreur de format des données' });
-    }
-  });
+    db.prepare('DELETE FROM recipes WHERE id = ?').run(id);
+    res.json({ message: 'Recette supprimée avec succès' });
+  } catch (err) {
+    console.error('Erreur DB:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
 });
 
 module.exports = router;
