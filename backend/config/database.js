@@ -15,7 +15,7 @@ if (!fs.existsSync(dbDir)) {
 // Connexion à la base de données
 let db;
 try {
-  db = new Database(dbPath, { verbose: console.log });
+  db = new Database(dbPath);
   console.log('✅ Connecté à la base de données SQLite (better-sqlite3)');
 } catch (err) {
   console.error('❌ Erreur de connexion à la base de données:', err);
@@ -27,20 +27,19 @@ db.pragma('foreign_keys = ON');
 
 // Initialiser les tables
 try {
-  // Table des utilisateurs
   db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    profileImage TEXT,
-    bio TEXT,
-    role TEXT DEFAULT 'user',
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-  // Table des recettes
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      profileImage TEXT,
+      bio TEXT,
+      role TEXT DEFAULT 'user',
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS recipes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,7 +60,6 @@ try {
     )
   `);
 
-  // Table des favoris (likes)
   db.exec(`
     CREATE TABLE IF NOT EXISTS favorites (
       userId INTEGER,
@@ -73,7 +71,6 @@ try {
     )
   `);
 
-  // Table des commentaires avec notation
   db.exec(`
     CREATE TABLE IF NOT EXISTS comments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
