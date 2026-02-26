@@ -47,7 +47,7 @@ const RecipeCard = ({ recipe, isOwner, onDelete, onAddToList }) => {
       <div className="relative aspect-video overflow-hidden">
         {recipe.imageUrl ? (
           <img
-            src={`http://localhost:5000${recipe.imageUrl}`}
+            src={`https://cookizzy-backend.onrender.com${recipe.imageUrl}`}
             alt={recipe.title}
             className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
             loading="lazy"

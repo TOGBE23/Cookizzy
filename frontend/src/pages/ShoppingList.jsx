@@ -383,7 +383,7 @@ const ShoppingList = () => {
                       <div className="flex items-center flex-1 min-w-0">
                         {recipe.imageUrl ? (
                           <img 
-                            src={`http://localhost:5000${recipe.imageUrl}`} 
+                            src={`https://cookizzy-backend.onrender.com${recipe.imageUrl}`} 
                             alt={recipe.title}
                             className="w-10 h-10 object-cover rounded mr-3 flex-shrink-0"
                           />

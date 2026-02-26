@@ -54,7 +54,7 @@ const EditRecipe = () => {
       
       if (currentRecipe.imageUrl) {
         setCurrentImageUrl(currentRecipe.imageUrl);
-        setImagePreview(`http://localhost:5000${currentRecipe.imageUrl}`);
+        setImagePreview(`https://cookizzy-backend.onrender.com${currentRecipe.imageUrl}`);
       }
     }
   }, [currentRecipe, isLoading]);
@@ -144,7 +144,7 @@ const EditRecipe = () => {
     setImage(null);
     setRemoveCurrentImage(false);
     if (currentImageUrl) {
-      setImagePreview(`http://localhost:5000${currentImageUrl}`);
+      setImagePreview(`https://cookizzy-backend.onrender.com${currentImageUrl}`);
     }
   };
 

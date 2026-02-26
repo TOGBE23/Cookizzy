@@ -13,8 +13,7 @@ import PrivateRoute from './components/PrivateRoute';
 import ThemeToggle from './components/ThemeToggle';
 
 // Pages
-import Login from './pages/Login';
-import Register from './pages/Register';
+import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import SearchRecipes from './pages/SearchRecipes';
 import MyRecipes from './pages/MyRecipes';
@@ -46,129 +45,125 @@ function AppContent() {
   }
 
   return (
-    <Router>
-      <div className="min-h-screen bg-neutral-100 dark:bg-gray-900 transition-colors duration-300">
-        <Navbar />
-        
-        {/* Bouton theme toggle flottant */}
-        <div className="fixed bottom-4 right-4 z-50">
-          <ThemeToggle />
-        </div>
-
-        {/* Configuration des notifications toast */}
-        <Toaster
-          position="top-right"
-          reverseOrder={false}
-          gutter={8}
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#fff',
-              color: '#333',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              fontSize: '14px',
-            },
-            success: {
-              duration: 3000,
-              icon: '✅',
-              style: {
-                borderLeft: '4px solid #4caf50',
-                background: '#f0f9f0',
-              },
-            },
-            error: {
-              duration: 4000,
-              icon: '❌',
-              style: {
-                borderLeft: '4px solid #f44336',
-                background: '#fef2f2',
-              },
-            },
-            loading: {
-              duration: Infinity,
-              icon: '⏳',
-              style: {
-                borderLeft: '4px solid #ffb6c1',
-              },
-            },
-          }}
-        />
-
-        <AnimatePresence mode="wait">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route
-              path="/dashboard"
-              element={
-                <PrivateRoute>
-                  <Dashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/search"
-              element={
-                <PrivateRoute>
-                  <SearchRecipes />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/my-recipes"
-              element={
-                <PrivateRoute>
-                  <MyRecipes />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/add-recipe"
-              element={
-                <PrivateRoute>
-                  <AddRecipe />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/recipe/:id"
-              element={
-                <PrivateRoute>
-                  <RecipeDetail />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/edit-recipe/:id"
-              element={
-                <PrivateRoute>
-                  <EditRecipe />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/shopping-list"
-              element={
-                <PrivateRoute>
-                  <ShoppingList />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <PrivateRoute>
-                  <Profile />
-                </PrivateRoute>
-              }
-            />
-            <Route path="/" element={<Navigate to="/dashboard" />} />
-          </Routes>
-        </AnimatePresence>
+    <div className="min-h-screen bg-neutral-100 dark:bg-gray-900 transition-colors duration-300">
+      <Navbar />
+      
+      {/* Bouton theme toggle flottant */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <ThemeToggle />
       </div>
-    </Router>
+
+      {/* Notifications toast */}
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        gutter={8}
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#fff',
+            color: '#333',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            fontSize: '14px',
+          },
+          success: {
+            duration: 3000,
+            icon: '✅',
+            style: {
+              borderLeft: '4px solid #4caf50',
+              background: '#f0f9f0',
+            },
+          },
+          error: {
+            duration: 4000,
+            icon: '❌',
+            style: {
+              borderLeft: '4px solid #f44336',
+              background: '#fef2f2',
+            },
+          },
+        }}
+      />
+
+      <AnimatePresence mode="wait">
+        <Routes>
+          {/* Page d'accueil */}
+          <Route path="/" element={<Home />} />
+          
+          {/* Redirections vers la page d'accueil avec modals */}
+          <Route path="/login" element={<Navigate to="/" state={{ openLogin: true }} replace />} />
+          <Route path="/register" element={<Navigate to="/" state={{ openRegister: true }} replace />} />
+          
+          {/* Routes protégées */}
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/search"
+            element={
+              <PrivateRoute>
+                <SearchRecipes />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/my-recipes"
+            element={
+              <PrivateRoute>
+                <MyRecipes />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/add-recipe"
+            element={
+              <PrivateRoute>
+                <AddRecipe />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/recipe/:id"
+            element={
+              <PrivateRoute>
+                <RecipeDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/edit-recipe/:id"
+            element={
+              <PrivateRoute>
+                <EditRecipe />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/shopping-list"
+            element={
+              <PrivateRoute>
+                <ShoppingList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -176,7 +171,10 @@ function App() {
   return (
     <Provider store={store}>
       <ThemeProvider>
-        <AppContent />
+        {/* ✅ CORRECTION : Router déplacé ici pour envelopper tout l'app */}
+        <Router>
+          <AppContent />
+        </Router>
       </ThemeProvider>
     </Provider>
   );

@@ -4,9 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { fetchUserRecipes } from '../store/slices/recipeSlice';
-import { logout } from '../store/slices/authSlice';
 import Modal from '../components/Modal';
 import AddRecipeForm from '../components/AddRecipeForm';
+
+// ✅ CORRECTION 3 : URL du backend centralisée, plus de localhost:5000 en dur
+const BACKEND_URL = 'https://cookizzy-backend.onrender.com';
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -14,7 +16,7 @@ const Dashboard = () => {
   const { user } = useSelector((state) => state.auth);
   const { userRecipes } = useSelector((state) => state.recipes);
   const { selectedRecipes } = useSelector((state) => state.shopping || { selectedRecipes: [] });
-  
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const username = user ? user.username : '';
 
@@ -25,7 +27,7 @@ const Dashboard = () => {
   }, [dispatch, user]);
 
   const totalRecipes = userRecipes ? userRecipes.length : 0;
-  
+
   const recipesByDifficulty = userRecipes ? userRecipes.reduce((acc, recipe) => {
     acc[recipe.difficulty] = (acc[recipe.difficulty] || 0) + 1;
     return acc;
@@ -55,7 +57,7 @@ const Dashboard = () => {
           className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-4 sm:p-6"
         >
           {/* En-tête */}
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
@@ -63,9 +65,9 @@ const Dashboard = () => {
           >
             Bienvenue sur Cookizzy, {username} !
           </motion.h1>
-          
+
           {/* Message de bienvenue */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
@@ -75,18 +77,18 @@ const Dashboard = () => {
           </motion.div>
 
           {/* Cartes de statistiques */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6 mb-8"
           >
-            {/* Total recettes - Rose */}
-            <motion.div 
+            {/* Total recettes */}
+            <motion.div
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               className="rounded-xl shadow-soft p-4 sm:p-6 cursor-pointer hover:shadow-medium transition-all"
-              style={{backgroundColor: '#ffb6c1'}}
+              style={{ backgroundColor: '#ffb6c1' }}
               onClick={() => navigate('/my-recipes')}
             >
               <div className="flex items-center justify-between">
@@ -98,12 +100,12 @@ const Dashboard = () => {
               </div>
             </motion.div>
 
-            {/* Temps moyen - Jaune poussin */}
-            <motion.div 
+            {/* Temps moyen */}
+            <motion.div
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               className="rounded-xl shadow-soft p-4 sm:p-6 cursor-pointer hover:shadow-medium transition-all"
-              style={{backgroundColor: '#fff9e6'}}
+              style={{ backgroundColor: '#fff9e6' }}
               onClick={() => navigate('/search')}
             >
               <div className="flex items-center justify-between">
@@ -115,12 +117,12 @@ const Dashboard = () => {
               </div>
             </motion.div>
 
-            {/* Catégorie favorite - Orange */}
-            <motion.div 
+            {/* Catégorie favorite */}
+            <motion.div
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               className="rounded-xl shadow-soft p-4 sm:p-6 cursor-pointer hover:shadow-medium transition-all"
-              style={{backgroundColor: '#ffb347'}}
+              style={{ backgroundColor: '#ffb347' }}
               onClick={() => navigate('/search')}
             >
               <div className="flex items-center justify-between">
@@ -134,22 +136,22 @@ const Dashboard = () => {
               </div>
             </motion.div>
 
-            {/* Difficulté - Marron clair */}
-            <motion.div 
+            {/* Difficulté */}
+            <motion.div
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               className="rounded-xl shadow-soft p-4 sm:p-6 cursor-pointer hover:shadow-medium transition-all"
-              style={{backgroundColor: '#c4a484'}}
+              style={{ backgroundColor: '#c4a484' }}
               onClick={() => navigate('/search')}
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm text-white">Difficulté</p>
                   <p className="text-base sm:text-xl font-bold text-white">
-                    {Object.keys(recipesByDifficulty).length > 0 
-                      ? Object.keys(recipesByDifficulty).reduce((a, b) => 
-                          recipesByDifficulty[a] > recipesByDifficulty[b] ? a : b
-                        )
+                    {Object.keys(recipesByDifficulty).length > 0
+                      ? Object.keys(recipesByDifficulty).reduce((a, b) =>
+                        recipesByDifficulty[a] > recipesByDifficulty[b] ? a : b
+                      )
                       : 'Aucune'}
                   </p>
                 </div>
@@ -157,12 +159,12 @@ const Dashboard = () => {
               </div>
             </motion.div>
 
-            {/* Liste de courses - Rose clair */}
-            <motion.div 
+            {/* Liste de courses */}
+            <motion.div
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               className="rounded-xl shadow-soft p-4 sm:p-6 cursor-pointer hover:shadow-medium transition-all"
-              style={{backgroundColor: '#ffd0d0'}}
+              style={{ backgroundColor: '#ffd0d0' }}
               onClick={() => navigate('/shopping-list')}
             >
               <div className="flex items-center justify-between">
@@ -191,7 +193,7 @@ const Dashboard = () => {
                 {['Facile', 'Moyen', 'Difficile'].map((diff, index) => {
                   const count = recipesByDifficulty[diff] || 0;
                   const percentage = totalRecipes > 0 ? (count / totalRecipes) * 100 : 0;
-                  
+
                   return (
                     <motion.div
                       key={diff}
@@ -208,10 +210,9 @@ const Dashboard = () => {
                           initial={{ width: 0 }}
                           animate={{ width: `${percentage}%` }}
                           transition={{ duration: 1, delay: 0.6 + index * 0.1 }}
-                          className={`h-2 sm:h-2.5 rounded-full ${
-                            diff === 'Facile' ? 'bg-green-400 dark:bg-green-500' : 
+                          className={`h-2 sm:h-2.5 rounded-full ${diff === 'Facile' ? 'bg-green-400 dark:bg-green-500' :
                             diff === 'Moyen' ? 'bg-yellow-400 dark:bg-yellow-500' : 'bg-red-400 dark:bg-red-500'
-                          }`}
+                            }`}
                         />
                       </div>
                     </motion.div>
@@ -222,7 +223,7 @@ const Dashboard = () => {
           )}
 
           {/* Actions rapides */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
@@ -233,7 +234,7 @@ const Dashboard = () => {
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsAddModalOpen(true)}
               className="p-4 sm:p-6 rounded-xl hover:shadow-medium transition-all text-left"
-              style={{backgroundColor: '#ffb6c1'}}
+              style={{ backgroundColor: '#ffb6c1' }}
             >
               <span className="text-2xl sm:text-3xl block mb-2">➕</span>
               <h3 className="font-semibold text-base sm:text-lg text-neutral-700">Ajouter une recette</h3>
@@ -247,7 +248,7 @@ const Dashboard = () => {
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/my-recipes')}
               className="p-4 sm:p-6 rounded-xl hover:shadow-medium transition-all text-left"
-              style={{backgroundColor: '#d8f0d8'}}
+              style={{ backgroundColor: '#d8f0d8' }}
             >
               <span className="text-2xl sm:text-3xl block mb-2">📋</span>
               <h3 className="font-semibold text-base sm:text-lg text-neutral-700">Voir mes recettes</h3>
@@ -279,8 +280,9 @@ const Dashboard = () => {
                     onClick={() => navigate(`/recipe/${recipe.id}`)}
                   >
                     {recipe.imageUrl ? (
-                      <img 
-                        src={`http://localhost:5000${recipe.imageUrl}`} 
+                      <img
+                        // ✅ CORRECTION 3 : Remplace localhost:5000 par l'URL du backend en ligne
+                        src={recipe.imageUrl.startsWith('http') ? recipe.imageUrl : `${BACKEND_URL}${recipe.imageUrl}`}
                         alt={recipe.title}
                         className="w-full h-32 object-cover"
                       />
@@ -312,7 +314,7 @@ const Dashboard = () => {
         title="Ajouter une nouvelle recette"
         size="max-w-4xl"
       >
-        <AddRecipeForm 
+        <AddRecipeForm
           onClose={() => setIsAddModalOpen(false)}
           onSuccess={() => {
             if (user) {

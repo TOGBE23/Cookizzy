@@ -45,7 +45,7 @@ const Profile = () => {
       }));
       
       if (profile.profileImage) {
-        setImagePreview(`http://localhost:5000${profile.profileImage}`);
+        setImagePreview(`https://cookizzy-backend.onrender.com${profile.profileImage}`);
       }
     }
   }, [profile]);

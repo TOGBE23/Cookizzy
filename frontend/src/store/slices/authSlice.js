@@ -23,10 +23,13 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
+      console.log('📡 API LOGIN - Envoi requête à:', api.defaults.baseURL + '/auth/login');
       const response = await api.post('/auth/login', credentials);
+      console.log('📡 API LOGIN - Réponse reçue:', response.data);
       localStorage.setItem('token', response.data.token);
       return response.data;
     } catch (error) {
+      console.error('📡 API LOGIN - ERREUR:', error.response?.data);
       if (error.response && error.response.data) {
         return rejectWithValue(error.response.data);
       }

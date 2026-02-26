@@ -198,7 +198,7 @@ const CommentsSection = ({ recipeId }) => {
                   <div className="flex items-center">
                     {comment.profileImage ? (
                       <img
-                        src={`http://localhost:5000${comment.profileImage}`}
+                        src={`https://cookizzy-backend.onrender.com${comment.profileImage}`}
                         alt={comment.username}
                         className="w-8 h-8 sm:w-10 sm:h-10 rounded-full mr-3 object-cover"
                       />

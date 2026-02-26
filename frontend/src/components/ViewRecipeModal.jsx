@@ -82,7 +82,7 @@ const ViewRecipeModal = ({ isOpen, onClose, recipe }) => {
                   {/* Image */}
                   {recipe.imageUrl ? (
                     <img 
-                      src={`http://localhost:5000${recipe.imageUrl}`} 
+                      src={`https://cookizzy-backend.onrender.com${recipe.imageUrl}`} 
                       alt={recipe.title}
                       className="w-full h-48 sm:h-64 object-cover rounded-lg mb-6"
                     />

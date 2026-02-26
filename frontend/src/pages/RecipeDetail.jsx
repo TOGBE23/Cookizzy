@@ -64,7 +64,7 @@ const RecipeDetail = () => {
         {/* Image */}
         {recipe.imageUrl ? (
           <img 
-            src={`http://localhost:5000${recipe.imageUrl}`} 
+            src={`https://cookizzy-backend.onrender.com${recipe.imageUrl}`} 
             alt={recipe.title}
             className="w-full h-96 object-cover rounded-t-lg"
           />
