@@ -1,39 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const pool = require('../config/database');
 const auth = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 
-// S'assurer que le dossier uploads/profiles existe
-const profilesDir = path.join(__dirname, '../uploads/profiles');
-if (!fs.existsSync(profilesDir)) {
-  fs.mkdirSync(profilesDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, profilesDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (mimetype && extname) return cb(null, true);
-    else cb(new Error('Seules les images sont autorisées'));
-  }
-});
+const upload = multer({ storage: multer.memoryStorage() });
 
 // ✅ Route de test
 router.get('/test', (req, res) => {
@@ -41,37 +13,38 @@ router.get('/test', (req, res) => {
 });
 
 // ✅ Obtenir le profil d'un utilisateur
-router.get('/profile/:userId', (req, res) => {
+router.get('/profile/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = db.prepare(
-      'SELECT id, username, email, profileImage, bio, role, createdAt FROM users WHERE id = ?'
-    ).get(userId);
-    
-    if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
-    res.json(user);
+    const result = await pool.query(
+      'SELECT id, username, email, "profileImage", bio, role, "createdAt" FROM users WHERE id = $1',
+      [userId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Erreur DB:', err);
+    console.error('Erreur:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// ✅ Mettre à jour le profil (protégé)
+// ✅ Mettre à jour le profil
 router.put('/profile', auth, upload.single('profileImage'), async (req, res) => {
   try {
     const userId = req.userId;
     const { username, email, bio, currentPassword, newPassword } = req.body;
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    if (userResult.rows.length === 0) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    const user = userResult.rows[0];
 
-    // Vérifier si le nouvel email est déjà pris
+    // Vérifier email déjà pris
     if (email && email !== user.email) {
-      const existingUser = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, userId);
-      if (existingUser) return res.status(400).json({ message: 'Cet email est déjà utilisé' });
+      const existing = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, userId]);
+      if (existing.rows.length > 0) return res.status(400).json({ message: 'Cet email est déjà utilisé' });
     }
 
-    // Vérifier le mot de passe si changement demandé
+    // Vérifier mot de passe
     let hashedPassword = user.password;
     if (newPassword) {
       if (!currentPassword) return res.status(400).json({ message: 'Mot de passe actuel requis' });
@@ -80,37 +53,34 @@ router.put('/profile', auth, upload.single('profileImage'), async (req, res) => 
       hashedPassword = await bcrypt.hash(newPassword, 10);
     }
 
-    // Déterminer la nouvelle image de profil
-    let profileImage = user.profileImage;
-    if (req.file) {
-      profileImage = `/uploads/profiles/${req.file.filename}`;
-    } else if (req.body.removeImage === 'true') {
-      profileImage = null;
-    }
+    await pool.query(
+      `UPDATE users SET 
+        username = COALESCE($1, username),
+        email = COALESCE($2, email),
+        bio = COALESCE($3, bio),
+        password = $4
+       WHERE id = $5`,
+      [username || null, email || null, bio || null, hashedPassword, userId]
+    );
 
-    db.prepare(
-      `UPDATE users SET username=COALESCE(?,username), email=COALESCE(?,email), bio=COALESCE(?,bio), password=?, profileImage=? WHERE id=?`
-    ).run(username || null, email || null, bio || null, hashedPassword, profileImage, userId);
-
-    const updatedUser = db.prepare(
-      'SELECT id, username, email, profileImage, bio, role FROM users WHERE id = ?'
-    ).get(userId);
-    
-    res.json(updatedUser);
+    const updated = await pool.query(
+      'SELECT id, username, email, "profileImage", bio, role FROM users WHERE id = $1',
+      [userId]
+    );
+    res.json(updated.rows[0]);
   } catch (err) {
-    console.error('Erreur DB:', err);
+    console.error('Erreur:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// ✅ Supprimer le compte (protégé)
-router.delete('/profile', auth, (req, res) => {
+// ✅ Supprimer le compte
+router.delete('/profile', auth, async (req, res) => {
   try {
-    const userId = req.userId;
-    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    await pool.query('DELETE FROM users WHERE id = $1', [req.userId]);
     res.json({ message: 'Compte supprimé avec succès' });
   } catch (err) {
-    console.error('Erreur DB:', err);
+    console.error('Erreur:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });

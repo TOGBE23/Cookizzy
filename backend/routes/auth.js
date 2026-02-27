@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../config/database');
+const pool = require('../config/database');
 
 // Inscription
 router.post('/register', async (req, res) => {
@@ -14,14 +14,14 @@ router.post('/register', async (req, res) => {
     }
 
     // Vérifier si l'email existe déjà
-    const existingUser = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-    if (existingUser) {
+    const existingEmail = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (existingEmail.rows.length > 0) {
       return res.status(400).json({ message: 'Cet email est déjà utilisé' });
     }
 
     // Vérifier si le username existe déjà
-    const existingUsername = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-    if (existingUsername) {
+    const existingUsername = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (existingUsername.rows.length > 0) {
       return res.status(400).json({ message: 'Ce nom d\'utilisateur est déjà pris' });
     }
 
@@ -29,27 +29,26 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Créer l'utilisateur
-    const result = db.prepare(
-      'INSERT INTO users (username, email, password) VALUES (?, ?, ?)'
-    ).run(username, email, hashedPassword);
+    const result = await pool.query(
+      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id',
+      [username, email, hashedPassword]
+    );
+
+    const userId = result.rows[0].id;
 
     // Générer le token JWT
     const token = jwt.sign(
-      { id: result.lastInsertRowid, email: email },
+      { id: userId, email: email },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRE }
     );
 
-    console.log('✅ Nouvel utilisateur créé:', { id: result.lastInsertRowid, username, email });
+    console.log('✅ Nouvel utilisateur créé:', { id: userId, username, email });
 
     res.status(201).json({
       message: 'Inscription réussie',
       token,
-      user: {
-        id: result.lastInsertRowid,
-        username,
-        email
-      }
+      user: { id: userId, username, email }
     });
   } catch (error) {
     console.error('❌ Erreur inscription:', error);
@@ -66,8 +65,9 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Email et mot de passe requis' });
     }
 
-    // Chercher l'utilisateur par email
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    // Chercher l'utilisateur
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
 
     if (!user) {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
@@ -75,7 +75,6 @@ router.post('/login', async (req, res) => {
 
     // Vérifier le mot de passe
     const isMatch = await bcrypt.compare(password, user.password);
-
     if (!isMatch) {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
@@ -102,6 +101,28 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('❌ Erreur connexion:', error);
     res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// Profil
+router.get('/profile', async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ message: 'Non autorisé' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const result = await pool.query(
+      'SELECT id, username, email, "profileImage" FROM users WHERE id = $1',
+      [decoded.id]
+    );
+
+    const user = result.rows[0];
+    if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+
+    res.json({ user });
+  } catch (error) {
+    console.error('❌ Erreur profil:', error);
+    res.status(401).json({ message: 'Token invalide' });
   }
 });
 

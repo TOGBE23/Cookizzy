@@ -1,28 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const pool = require('../config/database');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 
-// S'assurer que le dossier uploads existe
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configuration de multer pour l'upload d'images
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// Configuration multer (stockage en mémoire pour Vercel)
+const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: { fileSize: 20 * 1024 * 1024 },
@@ -30,91 +14,84 @@ const upload = multer({
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Seules les images sont autorisées'));
-    }
+    if (mimetype && extname) return cb(null, true);
+    else cb(new Error('Seules les images sont autorisées'));
   }
 });
 
-// ✅ Obtenir toutes les recettes (public)
-router.get('/', (req, res) => {
+// ✅ Obtenir toutes les recettes
+router.get('/', async (req, res) => {
   try {
-    const rows = db.prepare('SELECT * FROM recipes ORDER BY createdAt DESC').all();
-    const recipes = rows.map(row => ({
+    const result = await pool.query('SELECT * FROM recipes ORDER BY "createdAt" DESC');
+    const recipes = result.rows.map(row => ({
       ...row,
-      ingredients: JSON.parse(row.ingredients),
-      steps: JSON.parse(row.steps),
-      tags: row.tags ? JSON.parse(row.tags) : []
+      ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : row.ingredients,
+      steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : row.steps,
+      tags: row.tags ? (typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags) : []
     }));
     res.json(recipes);
   } catch (err) {
-    console.error('Erreur DB:', err);
+    console.error('Erreur:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// ✅ Obtenir les recettes d'un utilisateur (protégé) - DOIT être avant /:id
-router.get('/user/:userId', auth, (req, res) => {
+// ✅ Obtenir les recettes d'un utilisateur - AVANT /:id
+router.get('/user/:userId', auth, async (req, res) => {
   try {
     const { userId } = req.params;
-    const rows = db.prepare('SELECT * FROM recipes WHERE authorId = ? ORDER BY createdAt DESC').all(userId);
-    const recipes = rows.map(row => {
-      try {
-        return {
-          ...row,
-          ingredients: JSON.parse(row.ingredients),
-          steps: JSON.parse(row.steps),
-          tags: row.tags ? JSON.parse(row.tags) : []
-        };
-      } catch (parseErr) {
-        return { ...row, ingredients: [], steps: [], tags: [] };
-      }
-    });
+    const result = await pool.query(
+      'SELECT * FROM recipes WHERE "authorId" = $1 ORDER BY "createdAt" DESC',
+      [userId]
+    );
+    const recipes = result.rows.map(row => ({
+      ...row,
+      ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : row.ingredients,
+      steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : row.steps,
+      tags: row.tags ? (typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags) : []
+    }));
     res.json(recipes);
   } catch (err) {
-    console.error('Erreur DB:', err);
+    console.error('Erreur:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// ✅ Obtenir une recette par ID (public)
-router.get('/:id', (req, res) => {
+// ✅ Obtenir une recette par ID
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id);
+    const result = await pool.query('SELECT * FROM recipes WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Recette non trouvée' });
     
-    if (!row) {
-      return res.status(404).json({ message: 'Recette non trouvée' });
-    }
-    
+    const row = result.rows[0];
     const recipe = {
       ...row,
-      ingredients: JSON.parse(row.ingredients),
-      steps: JSON.parse(row.steps),
-      tags: row.tags ? JSON.parse(row.tags) : []
+      ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : row.ingredients,
+      steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : row.steps,
+      tags: row.tags ? (typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags) : []
     };
     res.json(recipe);
   } catch (err) {
-    console.error('Erreur DB:', err);
+    console.error('Erreur:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// ✅ Ajouter une recette (protégé)
-router.post('/', auth, upload.single('image'), (req, res) => {
+// ✅ Ajouter une recette
+router.post('/', auth, upload.single('image'), async (req, res) => {
   try {
     const { title, description, prepTime, difficulty, category } = req.body;
     const authorId = req.userId;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    // Note: sur Vercel les images ne sont pas persistantes, on ignore l'upload pour l'instant
+    const imageUrl = null;
 
     let ingredients, steps, tags;
     try {
       ingredients = req.body.ingredients ? JSON.parse(req.body.ingredients) : [];
       steps = req.body.steps ? JSON.parse(req.body.steps) : [];
       tags = req.body.tags ? JSON.parse(req.body.tags) : [];
-    } catch (parseErr) {
+    } catch (e) {
       return res.status(400).json({ message: 'Format de données invalide' });
     }
 
@@ -122,27 +99,28 @@ router.post('/', auth, upload.single('image'), (req, res) => {
     if (!ingredients.length) return res.status(400).json({ message: 'Les ingrédients sont requis' });
     if (!steps.length) return res.status(400).json({ message: 'Les étapes sont requises' });
 
-    const result = db.prepare(
-      `INSERT INTO recipes (title, description, ingredients, steps, prepTime, difficulty, category, authorId, tags, imageUrl)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(title, description, JSON.stringify(ingredients), JSON.stringify(steps), prepTime, difficulty, category, authorId, JSON.stringify(tags), imageUrl);
+    const result = await pool.query(
+      `INSERT INTO recipes (title, description, ingredients, steps, "prepTime", difficulty, category, "authorId", tags, "imageUrl")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [title, description, JSON.stringify(ingredients), JSON.stringify(steps), prepTime, difficulty, category, authorId, JSON.stringify(tags), imageUrl]
+    );
 
     res.status(201).json({
-      id: result.lastInsertRowid,
+      id: result.rows[0].id,
       title, description, ingredients, steps,
       prepTime, difficulty, category, authorId, tags, imageUrl
     });
   } catch (err) {
-    console.error('Erreur DB:', err);
+    console.error('Erreur:', err);
     res.status(500).json({ message: 'Erreur serveur: ' + err.message });
   }
 });
 
-// ✅ Mettre à jour une recette (protégé)
-router.put('/:id', auth, upload.single('image'), (req, res) => {
+// ✅ Mettre à jour une recette
+router.put('/:id', auth, upload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, prepTime, difficulty, category, removeImage } = req.body;
+    const { title, description, prepTime, difficulty, category } = req.body;
     const userId = req.userId;
 
     let ingredients, steps, tags;
@@ -150,57 +128,49 @@ router.put('/:id', auth, upload.single('image'), (req, res) => {
       ingredients = req.body.ingredients ? JSON.parse(req.body.ingredients) : [];
       steps = req.body.steps ? JSON.parse(req.body.steps) : [];
       tags = req.body.tags ? JSON.parse(req.body.tags) : [];
-    } catch (parseErr) {
+    } catch (e) {
       return res.status(400).json({ message: 'Format de données invalide' });
     }
 
     if (!title) return res.status(400).json({ message: 'Le titre est requis' });
 
-    const row = db.prepare('SELECT authorId, imageUrl FROM recipes WHERE id = ?').get(id);
-    if (!row) return res.status(404).json({ message: 'Recette non trouvée' });
-    if (row.authorId !== userId) return res.status(403).json({ message: 'Non autorisé' });
+    const existing = await pool.query('SELECT "authorId", "imageUrl" FROM recipes WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return res.status(404).json({ message: 'Recette non trouvée' });
+    if (existing.rows[0].authorId !== userId) return res.status(403).json({ message: 'Non autorisé' });
 
-    let imageUrl;
-    if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
-    } else if (removeImage === 'true') {
-      imageUrl = null;
-    } else {
-      imageUrl = row.imageUrl;
-    }
+    await pool.query(
+      `UPDATE recipes SET title=$1, description=$2, ingredients=$3, steps=$4, "prepTime"=$5, difficulty=$6, category=$7, tags=$8 WHERE id=$9`,
+      [title, description, JSON.stringify(ingredients), JSON.stringify(steps), prepTime, difficulty, category, JSON.stringify(tags), id]
+    );
 
-    db.prepare(
-      `UPDATE recipes SET title=?, description=?, ingredients=?, steps=?, prepTime=?, difficulty=?, category=?, tags=?, imageUrl=? WHERE id=?`
-    ).run(title, description, JSON.stringify(ingredients), JSON.stringify(steps), prepTime, difficulty, category, JSON.stringify(tags), imageUrl, id);
-
-    const updatedRow = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id);
-    const recipe = {
-      ...updatedRow,
-      ingredients: JSON.parse(updatedRow.ingredients),
-      steps: JSON.parse(updatedRow.steps),
-      tags: updatedRow.tags ? JSON.parse(updatedRow.tags) : []
-    };
-    res.json(recipe);
+    const updated = await pool.query('SELECT * FROM recipes WHERE id = $1', [id]);
+    const row = updated.rows[0];
+    res.json({
+      ...row,
+      ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : row.ingredients,
+      steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : row.steps,
+      tags: row.tags ? (typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags) : []
+    });
   } catch (err) {
-    console.error('Erreur DB:', err);
-    res.status(500).json({ message: 'Erreur serveur: ' + err.message });
+    console.error('Erreur:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// ✅ Supprimer une recette (protégé)
-router.delete('/:id', auth, (req, res) => {
+// ✅ Supprimer une recette
+router.delete('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
 
-    const row = db.prepare('SELECT authorId FROM recipes WHERE id = ?').get(id);
-    if (!row) return res.status(404).json({ message: 'Recette non trouvée' });
-    if (row.authorId !== userId) return res.status(403).json({ message: 'Non autorisé' });
+    const existing = await pool.query('SELECT "authorId" FROM recipes WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return res.status(404).json({ message: 'Recette non trouvée' });
+    if (existing.rows[0].authorId !== userId) return res.status(403).json({ message: 'Non autorisé' });
 
-    db.prepare('DELETE FROM recipes WHERE id = ?').run(id);
+    await pool.query('DELETE FROM recipes WHERE id = $1', [id]);
     res.json({ message: 'Recette supprimée avec succès' });
   } catch (err) {
-    console.error('Erreur DB:', err);
+    console.error('Erreur:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
