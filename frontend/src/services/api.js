@@ -1,9 +1,8 @@
 import axios from 'axios';
 
-// URL FIXE du backend en ligne (plus de variable d'env)
-const API_URL = 'https://cookizzy-backend.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://cookizzy-7oyc-4v1xgtsot-togbe23s-projects.vercel.app/api';
 
-console.log('🚀 API URL forcée:', API_URL);
+console.log('🚀 API URL:', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
