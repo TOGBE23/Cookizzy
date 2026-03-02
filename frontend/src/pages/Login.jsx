@@ -106,7 +106,7 @@ const Login = ({ onSuccess }) => {
         whileTap={{ scale: 0.98 }}
         type="submit"  // ← CRUCIAL : indique que c'est le bouton de soumission
         disabled={isLoading}
-        className="w-full bg-primary-main dark:bg-primary-dark text-white py-3 px-4 rounded-lg hover:opacity-90 transition disabled:opacity-50 font-medium"
+        className="bg-red-500 w-full bg-primary-main dark:bg-primary-dark text-white py-3 px-4 rounded-lg hover:opacity-90 transition disabled:opacity-50 font-medium"
       >
         {isLoading ? 'Connexion...' : 'Se connecter'}
       </motion.button>
