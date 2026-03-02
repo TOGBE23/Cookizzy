@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
+// const dotenv = require('dotenv');
 const path = require('path');
 
-dotenv.config();
+// dotenv.config();
 
 const app = express();
 
@@ -11,7 +11,7 @@ const app = express();
 app.use(cors({
   origin: function (origin, callback) {
     // Autorise les requêtes sans origin (comme Postman, curl, etc.)
-    if (!origin) return callback(null, true);
+    // if (!origin) return callback(dotenv.config();null, true);
     
     // Liste des domaines autorisés
     const allowedDomains = [
