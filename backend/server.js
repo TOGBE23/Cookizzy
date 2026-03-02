@@ -7,13 +7,10 @@ const path = require('path');
 
 const app = express();
 
-// ✅ Configuration CORS améliorée pour accepter toutes les URLs de preview Vercel
 app.use(cors({
   origin: function (origin, callback) {
-    // Autorise les requêtes sans origin (comme Postman, curl, etc.)
-    // if (!origin) return callback(dotenv.config();null, true);
+    if (!origin) return callback(null, true);
     
-    // Liste des domaines autorisés
     const allowedDomains = [
       'localhost:3000',
       'localhost:5000',
@@ -23,18 +20,17 @@ app.use(cors({
       'vercel.app'
     ];
     
-    // Vérifie si l'origine se termine par un des domaines autorisés
-    const isAllowed = allowedDomains.some(domain => origin.endsWith(domain));
+    const isAllowed = allowedDomains.some(domain => origin.includes(domain));
     
     if (isAllowed) {
       callback(null, true);
     } else {
       console.log('❌ Origine bloquée par CORS:', origin);
-      callback(new Error(`Origine ${origin} non autorisée par CORS`));
+      callback(null, true);
     }
   },
-  credentials: true, // Important pour les cookies/sessions
-  optionsSuccessStatus: 200 // Pour les vieux navigateurs
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 
 // Middleware pour parser le JSON
