@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://cookizzy-7oyc-4v1xgtsot-togbe23s-projects.vercel.app/api/:path*"
+    }
+  ]
+}
