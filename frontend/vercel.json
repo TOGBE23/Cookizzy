@@ -1,10 +1,13 @@
 {
+  "version": 2,
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://cookizzy-7oyc-4v1xgtsot-togbe23s-projects.vercel.app/api/:path*"
-       
-    }
+    { "source": "/api/auth/register", "destination": "/api/auth/register" },
+    { "source": "/api/auth/login", "destination": "/api/auth/login" },
+    { "source": "/api/auth/profile", "destination": "/api/auth/profile" },
+    { "source": "/api/recipes/user/:userId", "destination": "/api/recipes/user" },
+    { "source": "/api/recipes/:id", "destination": "/api/recipes/[id]" },
+    { "source": "/api/recipes", "destination": "/api/recipes/index" },
+    { "source": "/api/users/profile", "destination": "/api/users/profile" },
+    { "source": "/api/social/:path*", "destination": "/api/social/index" }
   ]
-  
 }
