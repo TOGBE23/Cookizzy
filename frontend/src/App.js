@@ -29,12 +29,8 @@ function AppContent() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      dispatch(loadUser()).finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
-  }, [dispatch, token]);
+  setIsLoading(false);
+}, []);
 
   if (isLoading) {
     return (

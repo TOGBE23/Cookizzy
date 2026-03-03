@@ -8,6 +8,7 @@ export const register = createAsyncThunk(
     try {
       const response = await api.post('/auth/register', userData);
       localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
       return response.data;
     } catch (error) {
       if (error.response && error.response.data) {
@@ -23,13 +24,11 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      console.log('📡 API LOGIN - Envoi requête à:', api.defaults.baseURL + '/auth/login');
       const response = await api.post('/auth/login', credentials);
-      console.log('📡 API LOGIN - Réponse reçue:', response.data);
       localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
       return response.data;
     } catch (error) {
-      console.error('📡 API LOGIN - ERREUR:', error.response?.data);
       if (error.response && error.response.data) {
         return rejectWithValue(error.response.data);
       }
@@ -57,7 +56,7 @@ export const loadUser = createAsyncThunk(
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
-    user: null,
+    user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null,
     token: localStorage.getItem('token'),
     isLoading: false,
     error: null,
@@ -65,6 +64,7 @@ const authSlice = createSlice({
   reducers: {
     logout: (state) => {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       state.user = null;
       state.token = null;
     },
@@ -74,7 +74,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Register
       .addCase(register.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -88,7 +87,6 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload?.message || "Erreur lors de l'inscription";
       })
-      // Login
       .addCase(login.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -102,7 +100,6 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload?.message || "Email ou mot de passe incorrect";
       })
-      // Load User
       .addCase(loadUser.pending, (state) => {
         state.isLoading = true;
       })
@@ -110,11 +107,11 @@ const authSlice = createSlice({
         state.isLoading = false;
         if (action.payload && action.payload.user) {
           state.user = action.payload.user;
+          localStorage.setItem('user', JSON.stringify(action.payload.user));
         }
       })
       .addCase(loadUser.rejected, (state) => {
         state.isLoading = false;
-        // ✅ Ne pas effacer le token ici !
         state.user = null;
       });
   },
