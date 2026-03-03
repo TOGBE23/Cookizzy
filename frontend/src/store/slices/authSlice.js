@@ -46,7 +46,6 @@ export const loadUser = createAsyncThunk(
       const response = await api.get('/auth/profile');
       return response.data;
     } catch (error) {
-      localStorage.removeItem('token');
       if (error.response && error.response.data) {
         return rejectWithValue(error.response.data);
       }
@@ -87,11 +86,7 @@ const authSlice = createSlice({
       })
       .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
-        if (action.payload && action.payload.message) {
-          state.error = action.payload.message;
-        } else {
-          state.error = "Erreur lors de l'inscription";
-        }
+        state.error = action.payload?.message || "Erreur lors de l'inscription";
       })
       // Login
       .addCase(login.pending, (state) => {
@@ -105,21 +100,22 @@ const authSlice = createSlice({
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
-        if (action.payload && action.payload.message) {
-          state.error = action.payload.message;
-        } else {
-          state.error = "Email ou mot de passe incorrect";
-        }
+        state.error = action.payload?.message || "Email ou mot de passe incorrect";
       })
       // Load User
+      .addCase(loadUser.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(loadUser.fulfilled, (state, action) => {
+        state.isLoading = false;
         if (action.payload && action.payload.user) {
           state.user = action.payload.user;
         }
       })
       .addCase(loadUser.rejected, (state) => {
+        state.isLoading = false;
+        // ✅ Ne pas effacer le token ici !
         state.user = null;
-        state.token = null;
       });
   },
 });
