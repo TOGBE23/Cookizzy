@@ -143,7 +143,7 @@ const Register = ({ onSuccess }) => {
         whileTap={{ scale: 0.98 }}
         type="submit"
         disabled={isLoading}
-        className="w-full bg-primary-main dark:bg-primary-dark text-white py-3 px-4 rounded-lg hover:opacity-90 transition disabled:opacity-50 font-medium"
+        className="bg-yellow-50 w-full bg-primary-main dark:bg-primary-dark text-white py-3 px-4 rounded-lg hover:opacity-90 transition disabled:opacity-50 font-medium"
       >
         {isLoading ? 'Inscription en cours...' : "S'inscrire"}
       </motion.button>

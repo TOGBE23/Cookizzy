@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api' || 'https://cookizzy-7oyc-4v1xgtsot-togbe23s-projects.vercel.app/api';
+const API_URL = 'https://cookizzy-7oyc-4v1xgtsot-togbe23s-projects.vercel.app/api';
 
 console.log('🚀 API URL:', API_URL);
 
