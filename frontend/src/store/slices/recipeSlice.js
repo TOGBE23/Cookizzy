@@ -34,7 +34,7 @@ export const addRecipe = createAsyncThunk(
     try {
       const response = await api.post('/recipes', recipeData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'application/json',
         },
       });
       return response.data;
@@ -52,7 +52,7 @@ export const updateRecipe = createAsyncThunk(
     try {
       const response = await api.put(`/recipes/${id}`, recipeData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'application/json',
         },
       });
       return response.data;
