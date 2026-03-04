@@ -35,6 +35,19 @@ module.exports = async (req, res) => {
   setHeaders(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // Parser le body JSON manuellement pour Vercel serverless
+if (req.method === 'POST' && !req.body) {
+  await new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => {
+      try { req.body = JSON.parse(data); } catch { req.body = {}; }
+      resolve();
+    });
+    req.on('error', reject);
+  });
+}
+
   // GET toutes les recettes
   if (req.method === 'GET') {
     try {
