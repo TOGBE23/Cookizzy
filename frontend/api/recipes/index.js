@@ -1,10 +1,19 @@
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+let pool;
+const getPool = () => {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
+  return pool;
+};
 
 const setHeaders = (res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29,7 +38,7 @@ module.exports = async (req, res) => {
   // GET toutes les recettes
   if (req.method === 'GET') {
     try {
-      const result = await pool.query('SELECT * FROM recipes ORDER BY "createdAt" DESC');
+      const result = await getPool().query('SELECT * FROM recipes ORDER BY "createdAt" DESC');
       const recipes = result.rows.map(row => ({
         ...row,
         ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : row.ingredients,
@@ -53,7 +62,7 @@ module.exports = async (req, res) => {
 
       if (!title) return res.status(400).json({ message: 'Le titre est requis' });
 
-      const result = await pool.query(
+      const result = await getPool().query(
         `INSERT INTO recipes (title, description, ingredients, steps, "prepTime", difficulty, category, "authorId", tags)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
         [

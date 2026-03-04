@@ -1,11 +1,19 @@
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
+let pool;
+const getPool = () => {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
+  return pool;
+};
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -20,7 +28,7 @@ module.exports = async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    const result = await pool.query(
+    const result = await getPool().query(
       'SELECT id, username, email, "profileImage", bio, role FROM users WHERE id = $1',
       [decoded.id]
     );

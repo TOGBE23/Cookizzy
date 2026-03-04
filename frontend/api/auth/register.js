@@ -1,11 +1,19 @@
 const { Pool } = require('pg');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+let pool;
+const getPool = () => {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
+  return pool;
+};
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,18 +30,18 @@ module.exports = async (req, res) => {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
 
-    const existingEmail = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    const existingEmail = await getPool().query('SELECT id FROM users WHERE email = $1', [email]);
     if (existingEmail.rows.length > 0) {
       return res.status(400).json({ message: 'Cet email est déjà utilisé' });
     }
 
-    const existingUsername = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+    const existingUsername = await getPool().query('SELECT id FROM users WHERE username = $1', [username]);
     if (existingUsername.rows.length > 0) {
       return res.status(400).json({ message: 'Ce nom d\'utilisateur est déjà pris' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await pool.query(
+    const result = await getPool().query(
       'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id',
       [username, email, hashedPassword]
     );

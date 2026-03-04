@@ -1,10 +1,19 @@
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+let pool;
+const getPool = () => {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
+  return pool;
+};
 
 const setHeaders = (res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,7 +32,7 @@ module.exports = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = req.query.userId || decoded.id;
 
-    const result = await pool.query(
+    const result = await getPool().query(
       'SELECT * FROM recipes WHERE "authorId" = $1 ORDER BY "createdAt" DESC',
       [userId]
     );

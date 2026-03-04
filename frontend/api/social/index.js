@@ -1,10 +1,19 @@
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+let pool;
+const getPool = () => {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
+  return pool;
+};
 
 const setHeaders = (res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -35,18 +44,18 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       try {
-        const existing = await pool.query(
+        const existing = await getPool().query(
           'SELECT * FROM favorites WHERE "userId" = $1 AND "recipeId" = $2',
           [user.id, recipeId]
         );
 
         if (existing.rows.length > 0) {
-          await pool.query('DELETE FROM favorites WHERE "userId" = $1 AND "recipeId" = $2', [user.id, recipeId]);
-          await pool.query('UPDATE recipes SET likes = likes - 1 WHERE id = $1', [recipeId]);
+          await getPool().query('DELETE FROM favorites WHERE "userId" = $1 AND "recipeId" = $2', [user.id, recipeId]);
+          await getPool().query('UPDATE recipes SET likes = likes - 1 WHERE id = $1', [recipeId]);
           return res.status(200).json({ liked: false });
         } else {
-          await pool.query('INSERT INTO favorites ("userId", "recipeId") VALUES ($1, $2)', [user.id, recipeId]);
-          await pool.query('UPDATE recipes SET likes = likes + 1 WHERE id = $1', [recipeId]);
+          await getPool().query('INSERT INTO favorites ("userId", "recipeId") VALUES ($1, $2)', [user.id, recipeId]);
+          await getPool().query('UPDATE recipes SET likes = likes + 1 WHERE id = $1', [recipeId]);
           return res.status(200).json({ liked: true });
         }
       } catch (err) {
@@ -56,7 +65,7 @@ module.exports = async (req, res) => {
 
     if (req.method === 'GET') {
       try {
-        const result = await pool.query(
+        const result = await getPool().query(
           'SELECT * FROM favorites WHERE "userId" = $1 AND "recipeId" = $2',
           [user.id, recipeId]
         );
@@ -71,7 +80,7 @@ module.exports = async (req, res) => {
   if (action === 'comments' && recipeId) {
     if (req.method === 'GET') {
       try {
-        const result = await pool.query(
+        const result = await getPool().query(
           `SELECT c.*, u.username, u."profileImage" FROM comments c 
            JOIN users u ON c."userId" = u.id 
            WHERE c."recipeId" = $1 ORDER BY c."createdAt" DESC`,
@@ -91,12 +100,12 @@ module.exports = async (req, res) => {
         const { content, rating } = req.body;
         if (!content) return res.status(400).json({ message: 'Commentaire requis' });
 
-        const result = await pool.query(
+        const result = await getPool().query(
           'INSERT INTO comments (content, "userId", "recipeId", rating) VALUES ($1, $2, $3, $4) RETURNING id',
           [content, user.id, recipeId, rating || null]
         );
 
-        const comment = await pool.query(
+        const comment = await getPool().query(
           `SELECT c.*, u.username, u."profileImage" FROM comments c 
            JOIN users u ON c."userId" = u.id WHERE c.id = $1`,
           [result.rows[0].id]
@@ -115,7 +124,7 @@ module.exports = async (req, res) => {
 
     if (req.method === 'DELETE') {
       try {
-        await pool.query('DELETE FROM comments WHERE id = $1 AND "userId" = $2', [commentId, user.id]);
+        await getPool().query('DELETE FROM comments WHERE id = $1 AND "userId" = $2', [commentId, user.id]);
         return res.status(200).json({ message: 'Commentaire supprimé' });
       } catch (err) {
         return res.status(500).json({ message: 'Erreur serveur' });

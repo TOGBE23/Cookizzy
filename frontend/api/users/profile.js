@@ -1,11 +1,19 @@
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+let pool;
+const getPool = () => {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
+  return pool;
+};
 
 const setHeaders = (res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,7 +33,7 @@ module.exports = async (req, res) => {
 
     // GET profil
     if (req.method === 'GET') {
-      const result = await pool.query(
+      const result = await getPool().query(
         'SELECT id, username, email, "profileImage", bio, role FROM users WHERE id = $1',
         [decoded.id]
       );
@@ -37,7 +45,7 @@ module.exports = async (req, res) => {
     if (req.method === 'PUT') {
       const { username, email, bio, currentPassword, newPassword } = req.body;
 
-      const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]);
+      const userResult = await getPool().query('SELECT * FROM users WHERE id = $1', [decoded.id]);
       if (userResult.rows.length === 0) return res.status(404).json({ message: 'Utilisateur non trouvé' });
       const user = userResult.rows[0];
 
@@ -49,12 +57,12 @@ module.exports = async (req, res) => {
         hashedPassword = await bcrypt.hash(newPassword, 10);
       }
 
-      await pool.query(
+      await getPool().query(
         `UPDATE users SET username=COALESCE($1,username), email=COALESCE($2,email), bio=COALESCE($3,bio), password=$4 WHERE id=$5`,
         [username || null, email || null, bio || null, hashedPassword, decoded.id]
       );
 
-      const updated = await pool.query(
+      const updated = await getPool().query(
         'SELECT id, username, email, "profileImage", bio, role FROM users WHERE id = $1',
         [decoded.id]
       );
@@ -63,7 +71,7 @@ module.exports = async (req, res) => {
 
     // DELETE supprimer compte
     if (req.method === 'DELETE') {
-      await pool.query('DELETE FROM users WHERE id = $1', [decoded.id]);
+      await getPool().query('DELETE FROM users WHERE id = $1', [decoded.id]);
       return res.status(200).json({ message: 'Compte supprimé' });
     }
 
