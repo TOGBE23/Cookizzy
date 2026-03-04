@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/recipes/index.js": {
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     { "source": "/api/auth/register", "destination": "/api/auth/register" },
     { "source": "/api/auth/login", "destination": "/api/auth/login" },
@@ -12,7 +7,12 @@
     { "source": "/api/recipes/user/:userId", "destination": "/api/recipes/user" },
     { "source": "/api/recipes/:id", "destination": "/api/recipes/[id]" },
     { "source": "/api/recipes", "destination": "/api/recipes/index" },
+    { "source": "/api/users/profile/:userId", "destination": "/api/users/profile" },
     { "source": "/api/users/profile", "destination": "/api/users/profile" },
-    { "source": "/api/social/:path*", "destination": "/api/social/index" }
+    { "source": "/api/social/recipes/:recipeId/like/check", "destination": "/api/social/index" },
+    { "source": "/api/social/recipes/:recipeId/like", "destination": "/api/social/index" },
+    { "source": "/api/social/recipes/:recipeId/comments", "destination": "/api/social/index" },
+    { "source": "/api/social/recipes/:recipeId/rating", "destination": "/api/social/index" },
+    { "source": "/api/social/comments/:commentId", "destination": "/api/social/index" }
   ]
 }
