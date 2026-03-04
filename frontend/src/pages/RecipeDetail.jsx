@@ -140,33 +140,33 @@ const RecipeDetail = () => {
   </div>
 )}
 
-          {/* Ingrédients */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4" style={{color: '#8b5a2b'}}>Ingrédients</h2>
-            <ul className="space-y-2">
-              {recipe.ingredients && recipe.ingredients.map((ing, index) => (
-                <li key={index} className="flex items-center">
-                  <span className="w-2 h-2 rounded-full mr-3" style={{backgroundColor: '#ffb6c1'}}></span>
-                  <span className="text-gray-700">
-                    {ing.quantity} {ing.unit} {ing.name}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+         {/* Ingrédients */}
+<div className="mb-8">
+  <h2 className="text-2xl font-semibold mb-4" style={{color: '#8b5a2b'}}>Ingrédients</h2>
+  <ul className="space-y-2">
+    {(Array.isArray(recipe.ingredients) ? recipe.ingredients : JSON.parse(recipe.ingredients || '[]')).map((ing, index) => (
+      <li key={index} className="flex items-center">
+        <span className="w-2 h-2 rounded-full mr-3" style={{backgroundColor: '#ffb6c1'}}></span>
+        <span className="text-gray-700">
+          {ing.quantity} {ing.unit} {ing.name}
+        </span>
+      </li>
+    ))}
+  </ul>
+</div>
 
-          {/* Étapes */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4" style={{color: '#8b5a2b'}}>Préparation</h2>
-            <ol className="space-y-4">
-              {recipe.steps && recipe.steps.map((step, index) => (
-                <li key={index} className="flex">
-                  <span className="font-bold mr-4" style={{color: '#ffb6c1'}}>{index + 1}.</span>
-                  <p className="text-gray-700">{step}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
+{/* Étapes */}
+<div className="mb-8">
+  <h2 className="text-2xl font-semibold mb-4" style={{color: '#8b5a2b'}}>Préparation</h2>
+  <ol className="space-y-4">
+    {(Array.isArray(recipe.steps) ? recipe.steps : JSON.parse(recipe.steps || '[]')).map((step, index) => (
+      <li key={index} className="flex">
+        <span className="font-bold mr-4" style={{color: '#ffb6c1'}}>{index + 1}.</span>
+        <p className="text-gray-700">{step}</p>
+      </li>
+    ))}
+  </ol>
+</div>
 
           {/* Section commentaires */}
           <CommentsSection recipeId={id} />
