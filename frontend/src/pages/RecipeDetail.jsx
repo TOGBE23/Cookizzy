@@ -130,15 +130,15 @@ const RecipeDetail = () => {
           </div>
 
           {/* Tags */}
-          {recipe.tags && recipe.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {recipe.tags.map(tag => (
-                <span key={tag} className="px-3 py-1 rounded-full text-sm" style={{backgroundColor: '#ffd8b0', color: '#8b5a2b'}}>
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
+{recipe.tags && recipe.tags.length > 0 && (
+  <div className="flex flex-wrap gap-2 mb-6">
+    {(Array.isArray(recipe.tags) ? recipe.tags : JSON.parse(recipe.tags || '[]')).map(tag => (
+      <span key={tag} className="px-3 py-1 rounded-full text-sm" style={{backgroundColor: '#ffd8b0', color: '#8b5a2b'}}>
+        #{tag}
+      </span>
+    ))}
+  </div>
+)}
 
           {/* Ingrédients */}
           <div className="mb-8">
