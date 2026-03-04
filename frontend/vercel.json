@@ -8,10 +8,6 @@
     { "source": "/api/recipes/:id", "destination": "/api/recipes/recipe" },
     { "source": "/api/recipes", "destination": "/api/recipes/index" },
     { "source": "/api/users/profile", "destination": "/api/users/profile" },
-    { "source": "/api/social/recipes/:recipeId/like/check", "destination": "/api/social/index" },
-    { "source": "/api/social/recipes/:recipeId/like", "destination": "/api/social/index" },
-    { "source": "/api/social/recipes/:recipeId/comments", "destination": "/api/social/index" },
-    { "source": "/api/social/recipes/:recipeId/rating", "destination": "/api/social/index" },
-    { "source": "/api/social/comments/:commentId", "destination": "/api/social/index" }
+    { "source": "/api/social/(.*)", "destination": "/api/social/index" }
   ]
 }
