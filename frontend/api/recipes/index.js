@@ -53,11 +53,11 @@ if (req.method === 'POST' && !req.body) {
     try {
       const result = await getPool().query('SELECT * FROM recipes ORDER BY "createdAt" DESC');
       const recipes = result.rows.map(row => ({
-        ...row,
-        ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : row.ingredients,
-        steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : row.steps,
-        tags: row.tags ? (typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags) : []
-      }));
+  ...row,
+  ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : (row.ingredients || []),
+  steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : (row.steps || []),
+  tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
+}));
       return res.status(200).json(recipes);
     } catch (err) {
       console.error('Erreur:', err);

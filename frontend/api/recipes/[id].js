@@ -42,13 +42,12 @@ module.exports = async (req, res) => {
       const result = await getPool().query('SELECT * FROM recipes WHERE id = $1', [id]);
       if (result.rows.length === 0) return res.status(404).json({ message: 'Recette non trouvée' });
       
-      const row = result.rows[0];
-      return res.status(200).json({
-        ...row,
-        ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : row.ingredients,
-        steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : row.steps,
-        tags: row.tags ? (typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags) : []
-      });
+      const recipes = result.rows.map(row => ({
+  ...row,
+  ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : (row.ingredients || []),
+  steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : (row.steps || []),
+  tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
+}));
     } catch (err) {
       return res.status(500).json({ message: 'Erreur serveur' });
     }
